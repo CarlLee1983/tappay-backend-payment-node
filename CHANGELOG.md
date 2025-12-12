@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/CarlLee1983/tappay-backend-payment-node/compare/v1.0.0...v1.1.0) (2025-12-12)
+
+
+### Features
+
+* 新增輸入驗證功能並改進錯誤處理 ([6c0c18b](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/6c0c18b4e84054c65dfca9438d20f8df611dd7d2))
+
 ## 1.0.0 (2025-12-12)
 
 
