@@ -4,7 +4,7 @@
 
 > A TypeScript SDK for TapPay Backend Payment APIs
 
-[![npm version](https://img.shields.io/npm/v/@carllee1983/@carllee1983/tappay-backend-payment.svg)](https://www.npmjs.com/package/@carllee1983/@carllee1983/tappay-backend-payment)
+[![npm version](https://img.shields.io/npm/v/@carllee1983/tappay-backend-payment-node-node.svg)](https://www.npmjs.com/package/@carllee1983/tappay-backend-payment-node-node)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js->=18.0.0-green.svg)](https://nodejs.org/)
 
@@ -19,19 +19,19 @@
 ## Installation
 
 ```bash
-npm install @carllee1983/@carllee1983/tappay-backend-payment
+npm install @carllee1983/tappay-backend-payment-node-node
 # or
-yarn add @carllee1983/@carllee1983/tappay-backend-payment
+yarn add @carllee1983/tappay-backend-payment-node-node
 # or
-pnpm add @carllee1983/@carllee1983/tappay-backend-payment
+pnpm add @carllee1983/tappay-backend-payment-node-node
 # or
-bun add @carllee1983/@carllee1983/tappay-backend-payment
+bun add @carllee1983/tappay-backend-payment-node-node
 ```
 
 ## Quick Start
 
 ```typescript
-import { TapPayClient, Env, Currency } from '@carllee1983/@carllee1983/tappay-backend-payment'
+import { TapPayClient, Env, Currency } from '@carllee1983/tappay-backend-payment-node-node'
 
 // Create client
 const client = new TapPayClient({
@@ -243,7 +243,7 @@ The SDK provides typed error classes for precise error handling. All errors exte
 Thrown when the TapPay API returns an error response (e.g., invalid prime, insufficient funds, card declined).
 
 ```typescript
-import { TapPayError } from '@carllee1983/tappay-backend-payment'
+import { TapPayError } from '@carllee1983/tappay-backend-payment-node'
 
 try {
   const response = await client.payByPrime({ ... })
@@ -272,7 +272,7 @@ try {
 Thrown when input validation fails before making the API request (e.g., missing required fields, invalid values).
 
 ```typescript
-import { TapPayValidationError } from '@carllee1983/tappay-backend-payment'
+import { TapPayValidationError } from '@carllee1983/tappay-backend-payment-node'
 
 try {
   await client.payByPrime({
@@ -297,7 +297,7 @@ try {
 Thrown when the API request times out.
 
 ```typescript
-import { TapPayTimeoutError } from '@carllee1983/tappay-backend-payment'
+import { TapPayTimeoutError } from '@carllee1983/tappay-backend-payment-node'
 
 try {
   await client.payByPrime({ ... })
@@ -315,7 +315,7 @@ try {
 Thrown when client configuration is invalid (e.g., missing partner key, invalid timeout).
 
 ```typescript
-import { TapPayConfigError } from '@carllee1983/tappay-backend-payment'
+import { TapPayConfigError } from '@carllee1983/tappay-backend-payment-node'
 
 try {
   const client = new TapPayClient({
@@ -339,7 +339,7 @@ import {
   TapPayConfigError,
   TapPayTimeoutError,
   TapPayValidationError,
-} from '@carllee1983/tappay-backend-payment'
+} from '@carllee1983/tappay-backend-payment-node'
 
 async function processPayment(prime: string, amount: number) {
   try {
@@ -391,7 +391,7 @@ async function processPayment(prime: string, amount: number) {
 For 3D Secure and e-payment transactions, TapPay will POST to your `backend_notify_url`:
 
 ```typescript
-import type { BackendNotifyPayload } from '@carllee1983/tappay-backend-payment'
+import type { BackendNotifyPayload } from '@carllee1983/tappay-backend-payment-node'
 
 // Express.js example
 app.post('/api/notify', (req, res) => {
@@ -414,7 +414,7 @@ app.post('/api/notify', (req, res) => {
 The SDK supports multiple currencies:
 
 ```typescript
-import { Currency, CurrencyMultiplier } from '@carllee1983/tappay-backend-payment'
+import { Currency, CurrencyMultiplier } from '@carllee1983/tappay-backend-payment-node'
 
 Currency.TWD // Taiwan Dollar (multiplier: 1)
 Currency.USD // US Dollar (multiplier: 100)

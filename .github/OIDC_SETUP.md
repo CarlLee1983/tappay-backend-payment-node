@@ -5,7 +5,7 @@
 根據錯誤訊息：
 ```
 npm notice Access token expired or revoked. Please try logging in again.
-npm error 404 Not Found - PUT https://registry.npmjs.org/tappay-backend-payment
+npm error 404 Not Found - PUT https://registry.npmjs.org/@carllee1983/tappay-backend-payment-node
 ```
 
 這表示 OIDC 認證沒有正確設定。請按照以下步驟進行設定。
@@ -40,14 +40,14 @@ npm error 404 Not Found - PUT https://registry.npmjs.org/tappay-backend-payment
 
 - ✅ Repository 名稱：`CarlLee1983/tappay-backend-payment-node`
 - ✅ Workflow 檔案：`.github/workflows/release-please.yml`
-- ✅ npm 帳號：`carllee1983` 是套件 `@carllee1983/tappay-backend-payment` 的 owner
+- ✅ npm 帳號：`carllee1983` 是套件 `@carllee1983/tappay-backend-payment-node` 的 owner
 
 ### 步驟 4：驗證套件權限
 
 在終端機執行：
 
 ```bash
-npm owner ls @carllee1983/tappay-backend-payment
+npm owner ls @carllee1983/tappay-backend-payment-node
 ```
 
 應該會看到你的帳號（`carllee1983`）在列表中。
@@ -90,7 +90,7 @@ npm owner ls @carllee1983/tappay-backend-payment
 1. 先解決 OIDC 認證問題（見問題 1）
 2. 確認你是套件的 owner：
    ```bash
-   npm owner ls @carllee1983/tappay-backend-payment
+   npm owner ls @carllee1983/tappay-backend-payment-node
    ```
 
 ### 問題 3：Repository 名稱不匹配
@@ -128,7 +128,7 @@ permissions:
 ## 🔗 相關連結
 
 - npm Trusted Publishers：https://www.npmjs.com/settings/carllee1983/trusted-publishers
-- npm Package：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment
+- npm Package：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment-node
 - GitHub Actions：https://github.com/CarlLee1983/tappay-backend-payment-node/actions
 - npm 設定頁面：https://www.npmjs.com/settings/carllee1983
 

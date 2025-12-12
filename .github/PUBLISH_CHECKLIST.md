@@ -23,10 +23,10 @@
 
 ### 2. 驗證套件權限
 
-確認你的 npm 帳號（`carllee1983`）是 `@carllee1983/tappay-backend-payment` 套件的 owner：
+確認你的 npm 帳號（`carllee1983`）是 `@carllee1983/tappay-backend-payment-node` 套件的 owner：
 
 ```bash
-npm owner ls @carllee1983/tappay-backend-payment
+npm owner ls @carllee1983/tappay-backend-payment-node
 ```
 
 應該會看到你的帳號在列表中。
@@ -51,7 +51,7 @@ npm owner ls @carllee1983/tappay-backend-payment
 2. 確認 GitHub Actions 的 `id-token: write` 權限已設定
 3. 確認 repository 名稱在 npm 設定中正確
 
-### 問題 2：`404 Not Found - PUT https://registry.npmjs.org/@carllee1983/tappay-backend-payment`
+### 問題 2：`404 Not Found - PUT https://registry.npmjs.org/@carllee1983/tappay-backend-payment-node`
 
 **原因**：
 - 套件名稱不存在（首次發布需要手動建立）
@@ -81,17 +81,17 @@ npm owner ls @carllee1983/tappay-backend-payment
    - 查看 `Release Please` workflow 執行結果
 
 3. **檢查 npm 發布結果**：
-   - 如果成功，套件會出現在：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment
+   - 如果成功，套件會出現在：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment-node
    - 版本 `1.1.1` 應該會出現在版本列表中
 
 4. **驗證發布內容**：
    ```bash
-   npm view @carllee1983/tappay-backend-payment@1.1.1
+   npm view @carllee1983/tappay-backend-payment-node@1.1.1
    ```
 
 ## 🔗 相關連結
 
-- npm 套件頁面：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment
+- npm 套件頁面：https://www.npmjs.com/package/@carllee1983/tappay-backend-payment-node
 - GitHub Actions：https://github.com/CarlLee1983/tappay-backend-payment-node/actions
 - npm 帳號設定：https://www.npmjs.com/settings/carllee1983
 
