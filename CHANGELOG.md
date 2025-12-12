@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+* 新增輸入參數驗證功能，為所有 API 方法加入完整的參數驗證
+* 改進錯誤處理機制，提供更詳細的錯誤訊息和錯誤類型
+
+### Refactoring
+
+* 改進 JSON 解析錯誤處理，加入完整的 try-catch 機制
+* 改進 HTTP 錯誤處理，讀取並提取錯誤回應內容
+* 改進 Timeout 清理機制，使用 finally 確保資源清理
+
+### Documentation
+
+* 更新 README 文件，加入詳細的錯誤處理說明和範例
+* 更新中文版 README，同步錯誤處理文件內容
+
+### Tests
+
+* 新增完整的單元測試，包含錯誤處理和輸入驗證測試（123 個測試全部通過）
+
 ## [1.0.0] - 2024-12-12
 
 ### Added
