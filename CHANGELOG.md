@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2025-12-12)
+
+
+### Features
+
+* add changelog sections configuration to release-please ([9e836ff](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/9e836ffc7a9b97eb748da2ce2b1f48999029c361))
+* initial release of TapPay Backend Payment SDK ([a144a81](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/a144a8142a7369389e4a82c821a80d52a3d5b4fb))
+
 ## [Unreleased]
 
 ## [1.0.0] - 2024-12-12
