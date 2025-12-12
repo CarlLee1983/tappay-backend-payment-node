@@ -4,7 +4,7 @@
 
 > TapPay 後端金流 TypeScript SDK
 
-[![npm version](https://img.shields.io/npm/v/tappay-backend-payment.svg)](https://www.npmjs.com/package/tappay-backend-payment)
+[![npm version](https://img.shields.io/npm/v/@carllee1983/@carllee1983/tappay-backend-payment.svg)](https://www.npmjs.com/package/@carllee1983/@carllee1983/tappay-backend-payment)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js->=18.0.0-green.svg)](https://nodejs.org/)
 
@@ -19,19 +19,19 @@
 ## 安裝
 
 ```bash
-npm install tappay-backend-payment
+npm install @carllee1983/tappay-backend-payment
 # 或
-yarn add tappay-backend-payment
+yarn add @carllee1983/tappay-backend-payment
 # 或
-pnpm add tappay-backend-payment
+pnpm add @carllee1983/tappay-backend-payment
 # 或
-bun add tappay-backend-payment
+bun add @carllee1983/tappay-backend-payment
 ```
 
 ## 快速開始
 
 ```typescript
-import { TapPayClient, Env, Currency } from 'tappay-backend-payment'
+import { TapPayClient, Env, Currency } from '@carllee1983/tappay-backend-payment'
 
 // 建立客戶端
 const client = new TapPayClient({
@@ -243,7 +243,7 @@ SDK 提供具類型的錯誤類別以精確處理錯誤。所有錯誤都繼承�
 當 TapPay API 回傳錯誤回應時拋出（例如：無效的 prime、餘額不足、卡片被拒絕）。
 
 ```typescript
-import { TapPayError } from 'tappay-backend-payment'
+import { TapPayError } from '@carllee1983/tappay-backend-payment'
 
 try {
   const response = await client.payByPrime({ ... })
@@ -272,7 +272,7 @@ try {
 在發送 API 請求前，輸入驗證失敗時拋出（例如：缺少必填欄位、無效的值）。
 
 ```typescript
-import { TapPayValidationError } from 'tappay-backend-payment'
+import { TapPayValidationError } from '@carllee1983/tappay-backend-payment'
 
 try {
   await client.payByPrime({
@@ -297,7 +297,7 @@ try {
 當 API 請求逾時時拋出。
 
 ```typescript
-import { TapPayTimeoutError } from 'tappay-backend-payment'
+import { TapPayTimeoutError } from '@carllee1983/tappay-backend-payment'
 
 try {
   await client.payByPrime({ ... })
@@ -315,7 +315,7 @@ try {
 當客戶端設定無效時拋出（例如：缺少 partner key、無效的 timeout）。
 
 ```typescript
-import { TapPayConfigError } from 'tappay-backend-payment'
+import { TapPayConfigError } from '@carllee1983/tappay-backend-payment'
 
 try {
   const client = new TapPayClient({
@@ -339,7 +339,7 @@ import {
   TapPayConfigError,
   TapPayTimeoutError,
   TapPayValidationError,
-} from 'tappay-backend-payment'
+} from '@carllee1983/tappay-backend-payment'
 
 async function processPayment(prime: string, amount: number) {
   try {
@@ -391,7 +391,7 @@ async function processPayment(prime: string, amount: number) {
 對於 3D 驗證和電子支付交易，TapPay 會 POST 到您的 `backend_notify_url`：
 
 ```typescript
-import type { BackendNotifyPayload } from 'tappay-backend-payment'
+import type { BackendNotifyPayload } from '@carllee1983/tappay-backend-payment'
 
 // Express.js 範例
 app.post('/api/notify', (req, res) => {
@@ -414,7 +414,7 @@ app.post('/api/notify', (req, res) => {
 SDK 支援多種貨幣：
 
 ```typescript
-import { Currency, CurrencyMultiplier } from 'tappay-backend-payment'
+import { Currency, CurrencyMultiplier } from '@carllee1983/tappay-backend-payment'
 
 Currency.TWD // 新台幣（乘數：1）
 Currency.USD // 美元（乘數：100）

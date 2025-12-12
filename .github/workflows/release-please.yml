@@ -68,12 +68,18 @@ jobs:
       - name: Verify npm authentication
         run: |
           echo "Verifying npm authentication..."
-          npm whoami --registry=https://registry.npmjs.org || echo "⚠️ Authentication check failed"
+          echo "Registry: $(npm config get registry)"
+          npm whoami --registry=https://registry.npmjs.org || (echo "⚠️ Authentication check failed - OIDC may not be configured correctly" && exit 1)
 
       - name: Publish to npm with OIDC
-        run: npm publish --access public --provenance
+        run: |
+          echo "Publishing to npm with OIDC authentication..."
+          echo "Package: $(node -p "require('./package.json').name")"
+          echo "Version: $(node -p "require('./package.json').version")"
+          npm publish --access public --provenance
         # 使用 OIDC 認證，setup-node 會自動處理認證
         # 如果失敗，請確認：
-        # 1. npm 帳號已啟用 OIDC（見 .github/OIDC_SETUP.md）
-        # 2. 套件 owner 權限正確
-        # 3. GitHub Actions 的 id-token 權限已設定
+        # 1. npm 帳號已啟用 OIDC 可信發布（見 .github/OIDC_SETUP.md）
+        # 2. Repository 名稱在 npm 設定中完全匹配：CarlLee1983/tappay-backend-payment-node
+        # 3. 套件 owner 權限正確
+        # 4. GitHub Actions 的 id-token 權限已設定
