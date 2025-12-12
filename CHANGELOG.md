@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1](https://github.com/CarlLee1983/tappay-backend-payment-node/compare/v1.1.0...v1.1.1) (2025-12-12)
+
+
+### Chores
+
+* 更新 package.json 中的 repository URL 並改進 GitHub Actions 工作流程 ([642078c](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/642078c))
+* 清理 CHANGELOG 中已發布的內容 ([509ca3a](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/509ca3a))
+
 ## [1.1.0](https://github.com/CarlLee1983/tappay-backend-payment-node/compare/v1.0.0...v1.1.0) (2025-12-12)
 
 
