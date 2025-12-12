@@ -45,11 +45,16 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Setup Node.js
+      - name: Setup Node.js with OIDC
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          # OIDC 認證：setup-node@v4 會自動使用 GITHUB_TOKEN 的 OIDC token
+          # 前提條件：
+          # 1. npm 帳號必須是套件的 owner（已確認：carllee1983）
+          # 2. npm 帳號需要啟用 OIDC 可信發布功能
+          # 3. permissions.id-token: write 已設定（已設定）
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -60,5 +65,15 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Publish to npm with OIDC provenance
+      - name: Verify npm authentication
+        run: |
+          echo "Verifying npm authentication..."
+          npm whoami --registry=https://registry.npmjs.org || echo "⚠️ Authentication check failed"
+
+      - name: Publish to npm with OIDC
         run: npm publish --access public --provenance
+        # 使用 OIDC 認證，setup-node 會自動處理認證
+        # 如果失敗，請確認：
+        # 1. npm 帳號已啟用 OIDC（見 .github/OIDC_SETUP.md）
+        # 2. 套件 owner 權限正確
+        # 3. GitHub Actions 的 id-token 權限已設定

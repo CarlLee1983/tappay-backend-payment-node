@@ -56,12 +56,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/CarlLee1983/tappay-backend-payment-npm.git"
+        "url": "git+https://github.com/CarlLee1983/tappay-backend-payment-node.git"
     },
     "bugs": {
-        "url": "https://github.com/CarlLee1983/tappay-backend-payment-npm/issues"
+        "url": "https://github.com/CarlLee1983/tappay-backend-payment-node/issues"
     },
-    "homepage": "https://github.com/CarlLee1983/tappay-backend-payment-npm#readme",
+    "homepage": "https://github.com/CarlLee1983/tappay-backend-payment-node#readme",
     "engines": {
         "node": ">=18.0.0"
     },
