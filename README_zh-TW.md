@@ -235,7 +235,102 @@ await client.removeCard('card_key_123', 'card_token_123')
 
 ## 錯誤處理
 
-SDK 提供具類型的錯誤類別以精確處理錯誤：
+SDK 提供具類型的錯誤類別以精確處理錯誤。所有錯誤都繼承自標準 `Error` 類別，可使用 try-catch 區塊捕獲。
+
+### 錯誤類型
+
+#### TapPayError
+當 TapPay API 回傳錯誤回應時拋出（例如：無效的 prime、餘額不足、卡片被拒絕）。
+
+```typescript
+import { TapPayError } from 'tappay-backend-payment'
+
+try {
+  const response = await client.payByPrime({ ... })
+} catch (error) {
+  if (error instanceof TapPayError) {
+    console.error(`API 錯誤: ${error.message}`)
+    console.error(`狀態碼: ${error.status}`)
+    console.error(`交易識別碼: ${error.recTradeId}`)
+    
+    // 檢查交易是否失敗
+    if (error.isTransactionFailed) {
+      // 處理失敗的交易
+    }
+  }
+}
+```
+
+**常見的 TapPay 錯誤狀態碼：**
+- `10001`: 無效的 prime
+- `10002`: 無效的卡號
+- `10003`: 餘額不足
+- `10004`: 卡片被拒絕
+- 完整清單請參閱 [TapPay 文件](https://docs.tappaysdk.com/tutorial/zh/reference.html#error-code)
+
+#### TapPayValidationError
+在發送 API 請求前，輸入驗證失敗時拋出（例如：缺少必填欄位、無效的值）。
+
+```typescript
+import { TapPayValidationError } from 'tappay-backend-payment'
+
+try {
+  await client.payByPrime({
+    prime: '', // 空的 prime 會觸發驗證錯誤
+    amount: 100,
+  })
+} catch (error) {
+  if (error instanceof TapPayValidationError) {
+    console.error(`驗證錯誤: ${error.message}`)
+    console.error(`欄位: ${error.field}`) // 例如：'prime', 'amount'
+  }
+}
+```
+
+**常見的驗證錯誤：**
+- 缺少必填欄位（prime、amount、currency 等）
+- 必填欄位為空字串
+- 無效的金額（零或負數）
+- 空的交易識別碼
+
+#### TapPayTimeoutError
+當 API 請求逾時時拋出。
+
+```typescript
+import { TapPayTimeoutError } from 'tappay-backend-payment'
+
+try {
+  await client.payByPrime({ ... })
+} catch (error) {
+  if (error instanceof TapPayTimeoutError) {
+    console.error(`請求在 ${error.timeout}ms 後逾時`)
+    console.error(`端點: ${error.endpoint}`)
+    
+    // 考慮重試請求
+  }
+}
+```
+
+#### TapPayConfigError
+當客戶端設定無效時拋出（例如：缺少 partner key、無效的 timeout）。
+
+```typescript
+import { TapPayConfigError } from 'tappay-backend-payment'
+
+try {
+  const client = new TapPayClient({
+    partnerKey: '', // 空的 key 會觸發設定錯誤
+    merchantId: 'test_merchant_id',
+  })
+} catch (error) {
+  if (error instanceof TapPayConfigError) {
+    console.error(`設定錯誤: ${error.message}`)
+    console.error(`欄位: ${error.field}`) // 例如：'partnerKey', 'merchantId'
+  }
+}
+```
+
+### 完整的錯誤處理範例
 
 ```typescript
 import {
@@ -246,23 +341,50 @@ import {
   TapPayValidationError,
 } from 'tappay-backend-payment'
 
-try {
-  await client.payByPrime({ ... })
-} catch (error) {
-  if (error instanceof TapPayError) {
-    // API 錯誤（如：無效的 prime、餘額不足）
-    console.error(`API 錯誤: ${error.message}`)
-    console.error(`狀態碼: ${error.status}`)
-    console.error(`交易識別碼: ${error.recTradeId}`)
-  } else if (error instanceof TapPayTimeoutError) {
-    // 請求逾時
-    console.error(`逾時 ${error.timeout}ms`)
-  } else if (error instanceof TapPayConfigError) {
-    // 設定錯誤
-    console.error(`設定錯誤: ${error.field}`)
+async function processPayment(prime: string, amount: number) {
+  try {
+    const response = await client.payByPrime({
+      prime,
+      amount,
+      currency: Currency.TWD,
+      details: '商品購買',
+    })
+    
+    return { success: true, transactionId: response.rec_trade_id }
+  } catch (error) {
+    if (error instanceof TapPayValidationError) {
+      // 輸入驗證失敗 - 修正輸入並重試
+      console.error(`無效的輸入: ${error.field} - ${error.message}`)
+      return { success: false, error: 'INVALID_INPUT', field: error.field }
+    } else if (error instanceof TapPayTimeoutError) {
+      // 請求逾時 - 考慮重試
+      console.error(`請求逾時: ${error.endpoint}`)
+      return { success: false, error: 'TIMEOUT', retryable: true }
+    } else if (error instanceof TapPayError) {
+      // API 回傳錯誤
+      console.error(`付款失敗: ${error.message} (狀態碼: ${error.status})`)
+      return {
+        success: false,
+        error: 'PAYMENT_FAILED',
+        status: error.status,
+        transactionId: error.recTradeId,
+      }
+    } else {
+      // 未預期的錯誤
+      console.error('未預期的錯誤:', error)
+      return { success: false, error: 'UNKNOWN' }
+    }
   }
 }
 ```
+
+### 錯誤處理最佳實踐
+
+1. **總是處理錯誤**：將 API 呼叫包裝在 try-catch 區塊中
+2. **檢查錯誤類型**：使用 `instanceof` 適當處理不同類型的錯誤
+3. **記錄錯誤**：在日誌中包含錯誤詳情以便除錯
+4. **重試逾時**：考慮在 `TapPayTimeoutError` 時重試
+5. **驗證輸入**：及早捕獲 `TapPayValidationError` 以提供更好的使用者回饋
 
 ## Backend Notify
 

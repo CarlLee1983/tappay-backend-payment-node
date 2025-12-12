@@ -235,7 +235,102 @@ await client.removeCard('card_key_123', 'card_token_123')
 
 ## Error Handling
 
-The SDK provides typed error classes for precise error handling:
+The SDK provides typed error classes for precise error handling. All errors extend the standard `Error` class and can be caught using try-catch blocks.
+
+### Error Types
+
+#### TapPayError
+Thrown when the TapPay API returns an error response (e.g., invalid prime, insufficient funds, card declined).
+
+```typescript
+import { TapPayError } from 'tappay-backend-payment'
+
+try {
+  const response = await client.payByPrime({ ... })
+} catch (error) {
+  if (error instanceof TapPayError) {
+    console.error(`API Error: ${error.message}`)
+    console.error(`Status Code: ${error.status}`)
+    console.error(`Transaction ID: ${error.recTradeId}`)
+    
+    // Check if transaction failed
+    if (error.isTransactionFailed) {
+      // Handle failed transaction
+    }
+  }
+}
+```
+
+**Common TapPay Error Status Codes:**
+- `10001`: Invalid prime
+- `10002`: Invalid card number
+- `10003`: Insufficient funds
+- `10004`: Card declined
+- See [TapPay Documentation](https://docs.tappaysdk.com/tutorial/zh/reference.html#error-code) for complete list
+
+#### TapPayValidationError
+Thrown when input validation fails before making the API request (e.g., missing required fields, invalid values).
+
+```typescript
+import { TapPayValidationError } from 'tappay-backend-payment'
+
+try {
+  await client.payByPrime({
+    prime: '', // Empty prime will trigger validation error
+    amount: 100,
+  })
+} catch (error) {
+  if (error instanceof TapPayValidationError) {
+    console.error(`Validation Error: ${error.message}`)
+    console.error(`Field: ${error.field}`) // e.g., 'prime', 'amount'
+  }
+}
+```
+
+**Common Validation Errors:**
+- Missing required fields (prime, amount, currency, etc.)
+- Empty strings for required fields
+- Invalid amount (zero or negative)
+- Empty transaction IDs
+
+#### TapPayTimeoutError
+Thrown when the API request times out.
+
+```typescript
+import { TapPayTimeoutError } from 'tappay-backend-payment'
+
+try {
+  await client.payByPrime({ ... })
+} catch (error) {
+  if (error instanceof TapPayTimeoutError) {
+    console.error(`Request timed out after ${error.timeout}ms`)
+    console.error(`Endpoint: ${error.endpoint}`)
+    
+    // Consider retrying the request
+  }
+}
+```
+
+#### TapPayConfigError
+Thrown when client configuration is invalid (e.g., missing partner key, invalid timeout).
+
+```typescript
+import { TapPayConfigError } from 'tappay-backend-payment'
+
+try {
+  const client = new TapPayClient({
+    partnerKey: '', // Empty key will trigger config error
+    merchantId: 'test_merchant_id',
+  })
+} catch (error) {
+  if (error instanceof TapPayConfigError) {
+    console.error(`Config Error: ${error.message}`)
+    console.error(`Field: ${error.field}`) // e.g., 'partnerKey', 'merchantId'
+  }
+}
+```
+
+### Complete Error Handling Example
 
 ```typescript
 import {
@@ -246,23 +341,50 @@ import {
   TapPayValidationError,
 } from 'tappay-backend-payment'
 
-try {
-  await client.payByPrime({ ... })
-} catch (error) {
-  if (error instanceof TapPayError) {
-    // API error (e.g., invalid prime, insufficient funds)
-    console.error(`API Error: ${error.message}`)
-    console.error(`Status Code: ${error.status}`)
-    console.error(`Transaction ID: ${error.recTradeId}`)
-  } else if (error instanceof TapPayTimeoutError) {
-    // Request timeout
-    console.error(`Timeout after ${error.timeout}ms`)
-  } else if (error instanceof TapPayConfigError) {
-    // Configuration error
-    console.error(`Config Error: ${error.field}`)
+async function processPayment(prime: string, amount: number) {
+  try {
+    const response = await client.payByPrime({
+      prime,
+      amount,
+      currency: Currency.TWD,
+      details: 'Product Purchase',
+    })
+    
+    return { success: true, transactionId: response.rec_trade_id }
+  } catch (error) {
+    if (error instanceof TapPayValidationError) {
+      // Input validation failed - fix the input and retry
+      console.error(`Invalid input: ${error.field} - ${error.message}`)
+      return { success: false, error: 'INVALID_INPUT', field: error.field }
+    } else if (error instanceof TapPayTimeoutError) {
+      // Request timed out - consider retrying
+      console.error(`Request timeout: ${error.endpoint}`)
+      return { success: false, error: 'TIMEOUT', retryable: true }
+    } else if (error instanceof TapPayError) {
+      // API returned an error
+      console.error(`Payment failed: ${error.message} (Status: ${error.status})`)
+      return {
+        success: false,
+        error: 'PAYMENT_FAILED',
+        status: error.status,
+        transactionId: error.recTradeId,
+      }
+    } else {
+      // Unexpected error
+      console.error('Unexpected error:', error)
+      return { success: false, error: 'UNKNOWN' }
+    }
   }
 }
 ```
+
+### Error Handling Best Practices
+
+1. **Always handle errors**: Wrap API calls in try-catch blocks
+2. **Check error types**: Use `instanceof` to handle different error types appropriately
+3. **Log errors**: Include error details in logs for debugging
+4. **Retry timeouts**: Consider retrying on `TapPayTimeoutError`
+5. **Validate input**: Catch `TapPayValidationError` early to provide better user feedback
 
 ## Backend Notify
 

@@ -376,13 +376,17 @@ describe('TapPay Backend Payment SDK', () => {
       const originalFetch = globalThis.fetch
       let mockFetch: ReturnType<typeof mock>
 
+      // Helper function to create mock response
+      const createMockResponse = (data: unknown) => ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: () => Promise.resolve(JSON.stringify(data)),
+        json: () => Promise.resolve(data),
+      })
+
       beforeEach(() => {
-        mockFetch = mock(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ status: 0, msg: 'Success' }),
-          })
-        )
+        mockFetch = mock(() => Promise.resolve(createMockResponse({ status: 0, msg: 'Success' })))
         globalThis.fetch = mockFetch as unknown as typeof fetch
       })
 
@@ -398,15 +402,13 @@ describe('TapPay Backend Payment SDK', () => {
       describe('payByPrime', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  rec_trade_id: 'D20231201123456789',
-                }),
-            })
+            Promise.resolve(
+              createMockResponse({
+                status: 0,
+                msg: 'Success',
+                rec_trade_id: 'D20231201123456789',
+              })
+            )
           )
 
           await client.payByPrime({
@@ -427,14 +429,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should include partner_key and merchant_id in request body', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.payByPrime({
@@ -453,16 +448,14 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should return successful response', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  rec_trade_id: 'D20231201123456789',
-                  amount: 100,
-                }),
-            })
+            Promise.resolve(
+              createMockResponse({
+                status: 0,
+                msg: 'Success',
+                rec_trade_id: 'D20231201123456789',
+                amount: 100,
+              })
+            )
           )
 
           const response = await client.payByPrime({
@@ -477,14 +470,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should throw TapPayError on API error response', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 10001,
-                  msg: 'Invalid prime',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 10001, msg: 'Invalid prime' }))
           )
 
           await expect(
@@ -502,6 +488,7 @@ describe('TapPay Backend Payment SDK', () => {
               ok: false,
               status: 500,
               statusText: 'Internal Server Error',
+              text: () => Promise.resolve(''),
             })
           )
 
@@ -518,14 +505,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('payByToken', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.payByToken({
@@ -544,14 +524,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('refund', () => {
         it('should call correct endpoint for full refund', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.refund('D20231201123456789')
@@ -564,14 +537,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should include amount for partial refund', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.refund('D20231201123456789', { amount: 50 })
@@ -585,14 +551,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('cancelRefund', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.cancelRefund('D20231201123456789', 'R20231201123456789')
@@ -608,14 +567,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('capToday', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.capToday('D20231201123456789')
@@ -630,14 +582,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('cancelCapture', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.cancelCapture('D20231201123456789')
@@ -652,18 +597,16 @@ describe('TapPay Backend Payment SDK', () => {
       describe('bindCard', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  card_secret: {
-                    card_key: 'key123',
-                    card_token: 'token123',
-                  },
-                }),
-            })
+            Promise.resolve(
+              createMockResponse({
+                status: 0,
+                msg: 'Success',
+                card_secret: {
+                  card_key: 'key123',
+                  card_token: 'token123',
+                },
+              })
+            )
           )
 
           await client.bindCard({
@@ -684,14 +627,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('removeCard', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           await client.removeCard('card_key_123', 'card_token_123')
@@ -707,15 +643,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('getRecords', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  trade_records: [],
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success', trade_records: [] }))
           )
 
           await client.getRecords()
@@ -726,15 +654,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should include filters in request', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  trade_records: [],
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success', trade_records: [] }))
           )
 
           await client.getRecords({
@@ -756,20 +676,18 @@ describe('TapPay Backend Payment SDK', () => {
       describe('getTransaction', () => {
         it('should return first record when found', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  trade_records: [
-                    {
-                      rec_trade_id: 'D20231201123456789',
-                      amount: 100,
-                    },
-                  ],
-                }),
-            })
+            Promise.resolve(
+              createMockResponse({
+                status: 0,
+                msg: 'Success',
+                trade_records: [
+                  {
+                    rec_trade_id: 'D20231201123456789',
+                    amount: 100,
+                  },
+                ],
+              })
+            )
           )
 
           const result = await client.getTransaction('D20231201123456789')
@@ -780,15 +698,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should return null when not found', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  trade_records: [],
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success', trade_records: [] }))
           )
 
           const result = await client.getTransaction('D20231201123456789')
@@ -798,14 +708,7 @@ describe('TapPay Backend Payment SDK', () => {
 
         it('should return null when trade_records is undefined', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success' }))
           )
 
           const result = await client.getTransaction('D20231201123456789')
@@ -817,15 +720,7 @@ describe('TapPay Backend Payment SDK', () => {
       describe('getTradeHistory', () => {
         it('should call correct endpoint', async () => {
           mockFetch.mockImplementation(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  status: 0,
-                  msg: 'Success',
-                  trade_history: [],
-                }),
-            })
+            Promise.resolve(createMockResponse({ status: 0, msg: 'Success', trade_history: [] }))
           )
 
           await client.getTradeHistory('D20231201123456789')
@@ -897,6 +792,16 @@ describe('TapPay Backend Payment SDK', () => {
         globalThis.fetch = (() =>
           Promise.resolve({
             ok: true,
+            status: 200,
+            statusText: 'OK',
+            text: () =>
+              Promise.resolve(
+                JSON.stringify({
+                  status: 10001,
+                  msg: 'Invalid prime',
+                  rec_trade_id: 'D20231201123456789',
+                })
+              ),
             json: () =>
               Promise.resolve({
                 status: 10001,
@@ -915,6 +820,242 @@ describe('TapPay Backend Payment SDK', () => {
           expect(error).toBeInstanceOf(TapPayError)
           expect((error as TapPayError).recTradeId).toBe('D20231201123456789')
         }
+      })
+
+      it('should handle JSON parse errors gracefully', async () => {
+        globalThis.fetch = (() =>
+          Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve('Invalid JSON response'),
+          })) as unknown as typeof fetch
+
+        await expect(
+          client.payByPrime({
+            prime: 'test_prime',
+            amount: 100,
+            details: 'Test Payment',
+          })
+        ).rejects.toThrow(TapPayError)
+      })
+
+      it('should handle empty response', async () => {
+        globalThis.fetch = (() =>
+          Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(''),
+          })) as unknown as typeof fetch
+
+        await expect(
+          client.payByPrime({
+            prime: 'test_prime',
+            amount: 100,
+            details: 'Test Payment',
+          })
+        ).rejects.toThrow(TapPayError)
+      })
+
+      it('should extract error message from HTTP error response', async () => {
+        globalThis.fetch = (() =>
+          Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: () => Promise.resolve(JSON.stringify({ msg: 'Server error message' })),
+          })) as unknown as typeof fetch
+
+        try {
+          await client.payByPrime({
+            prime: 'test_prime',
+            amount: 100,
+            details: 'Test Payment',
+          })
+        } catch (error) {
+          expect(error).toBeInstanceOf(TapPayError)
+          expect((error as TapPayError).message).toContain('Server error message')
+        }
+      })
+    })
+
+    describe('input validation', () => {
+      const client = new TapPayClient({
+        partnerKey: 'test_partner_key',
+        merchantId: 'test_merchant_id',
+      })
+
+      describe('payByPrime validation', () => {
+        it('should throw TapPayValidationError for empty prime', async () => {
+          await expect(
+            client.payByPrime({
+              prime: '',
+              amount: 100,
+              details: 'Test Payment',
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for whitespace-only prime', async () => {
+          await expect(
+            client.payByPrime({
+              prime: '   ',
+              amount: 100,
+              details: 'Test Payment',
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for zero amount', async () => {
+          await expect(
+            client.payByPrime({
+              prime: 'test_prime',
+              amount: 0,
+              details: 'Test Payment',
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for negative amount', async () => {
+          await expect(
+            client.payByPrime({
+              prime: 'test_prime',
+              amount: -100,
+              details: 'Test Payment',
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for empty order_number', async () => {
+          await expect(
+            client.payByPrime({
+              prime: 'test_prime',
+              amount: 100,
+              order_number: '',
+              details: 'Test Payment',
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('payByToken validation', () => {
+        it('should throw TapPayValidationError for empty card_key', async () => {
+          await expect(
+            client.payByToken({
+              card_key: '',
+              card_token: 'test_token',
+              amount: 100,
+              currency: Currency.TWD,
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for empty card_token', async () => {
+          await expect(
+            client.payByToken({
+              card_key: 'test_key',
+              card_token: '',
+              amount: 100,
+              currency: Currency.TWD,
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for missing currency', async () => {
+          await expect(
+            client.payByToken({
+              card_key: 'test_key',
+              card_token: 'test_token',
+              amount: 100,
+              // @ts-expect-error - Testing missing currency
+              currency: undefined,
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('refund validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.refund('')).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for negative refund amount', async () => {
+          await expect(client.refund('D20231201123456789', { amount: -50 })).rejects.toThrow(
+            TapPayValidationError
+          )
+        })
+
+        it('should throw TapPayValidationError for zero refund amount', async () => {
+          await expect(client.refund('D20231201123456789', { amount: 0 })).rejects.toThrow(
+            TapPayValidationError
+          )
+        })
+      })
+
+      describe('cancelRefund validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.cancelRefund('', 'R20231201123456789')).rejects.toThrow(
+            TapPayValidationError
+          )
+        })
+
+        it('should throw TapPayValidationError for empty refundId', async () => {
+          await expect(client.cancelRefund('D20231201123456789', '')).rejects.toThrow(
+            TapPayValidationError
+          )
+        })
+      })
+
+      describe('capToday validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.capToday('')).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('cancelCapture validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.cancelCapture('')).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('bindCard validation', () => {
+        it('should throw TapPayValidationError for empty prime', async () => {
+          await expect(
+            client.bindCard({
+              prime: '',
+              currency: Currency.TWD,
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for missing currency', async () => {
+          await expect(
+            client.bindCard({
+              prime: 'test_prime',
+              // @ts-expect-error - Testing missing currency
+              currency: undefined,
+            })
+          ).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('removeCard validation', () => {
+        it('should throw TapPayValidationError for empty cardKey', async () => {
+          await expect(client.removeCard('', 'test_token')).rejects.toThrow(TapPayValidationError)
+        })
+
+        it('should throw TapPayValidationError for empty cardToken', async () => {
+          await expect(client.removeCard('test_key', '')).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('getTradeHistory validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.getTradeHistory('')).rejects.toThrow(TapPayValidationError)
+        })
+      })
+
+      describe('getTransaction validation', () => {
+        it('should throw TapPayValidationError for empty recTradeId', async () => {
+          await expect(client.getTransaction('')).rejects.toThrow(TapPayValidationError)
+        })
       })
     })
   })

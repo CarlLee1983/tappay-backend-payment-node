@@ -3,6 +3,7 @@ import type { TapPayConfig } from './config/TapPayConfig'
 import { TapPayConfigError } from './errors/TapPayConfigError'
 import { TapPayError } from './errors/TapPayError'
 import { TapPayTimeoutError } from './errors/TapPayTimeoutError'
+import { TapPayValidationError } from './errors/TapPayValidationError'
 import type {
   BindCardRequest,
   CapCancelRequest,
@@ -98,9 +99,11 @@ export class TapPayClient {
     const url = `${this.config.env}${endpoint}`
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
 
     try {
+      timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -111,16 +114,46 @@ export class TapPayClient {
         signal: controller.signal,
       })
 
-      clearTimeout(timeoutId)
-
+      // Handle HTTP errors with better error message extraction
       if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        try {
+          const errorText = await response.text()
+          if (errorText) {
+            try {
+              const errorData = JSON.parse(errorText) as { msg?: string; message?: string }
+              if (errorData.msg) {
+                errorMessage = errorData.msg
+              } else if (errorData.message) {
+                errorMessage = errorData.message
+              }
+            } catch {
+              // If JSON parsing fails, use the raw text if it's not too long
+              if (errorText.length < 500) {
+                errorMessage = errorText
+              }
+            }
+          }
+        } catch {
+          // Ignore errors when reading response, use default message
+        }
+        throw new TapPayError(errorMessage, response.status)
+      }
+
+      // Parse JSON response with error handling
+      let data: T
+      try {
+        const text = await response.text()
+        if (!text) {
+          throw new TapPayError('Empty response from server', response.status)
+        }
+        data = JSON.parse(text) as T
+      } catch (parseError) {
         throw new TapPayError(
-          `HTTP ${String(response.status)}: ${response.statusText}`,
+          `Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`,
           response.status
         )
       }
-
-      const data = (await response.json()) as T
 
       // Check TapPay status code
       if (data.status !== 0) {
@@ -129,21 +162,29 @@ export class TapPayClient {
 
       return data
     } catch (error) {
-      clearTimeout(timeoutId)
-
+      // Re-throw TapPay errors as-is
       if (error instanceof TapPayError) {
         throw error
       }
 
+      // Handle timeout errors
       if (error instanceof Error && error.name === 'AbortError') {
         throw new TapPayTimeoutError(
-          `Request timeout after ${String(this.config.timeout)}ms`,
+          `Request timeout after ${this.config.timeout}ms`,
           this.config.timeout,
           endpoint
         )
       }
 
-      throw new TapPayError(error instanceof Error ? error.message : 'Unknown error', -1)
+      // Handle other errors with more detailed messages
+      const errorMessage =
+        error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown error occurred'
+      throw new TapPayError(`Network error: ${errorMessage}`, -1)
+    } finally {
+      // Ensure timeout is always cleared
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
   }
 
@@ -178,6 +219,20 @@ export class TapPayClient {
   async payByPrime(
     options: Omit<PayByPrimeRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
+    // Validate required fields
+    if (!options.prime || options.prime.trim() === '') {
+      throw new TapPayValidationError('Prime is required', 'prime')
+    }
+
+    if (options.amount === undefined || options.amount <= 0) {
+      throw new TapPayValidationError('Amount must be positive', 'amount')
+    }
+
+    // Validate order_number if provided (cannot be empty string)
+    if (options.order_number !== undefined && options.order_number.trim() === '') {
+      throw new TapPayValidationError('Order number cannot be empty string', 'order_number')
+    }
+
     const body: PayByPrimeRequest = {
       ...options,
       partner_key: this.config.partnerKey,
@@ -213,6 +268,28 @@ export class TapPayClient {
   async payByToken(
     options: Omit<PayByTokenRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
+    // Validate required fields
+    if (!options.card_key || options.card_key.trim() === '') {
+      throw new TapPayValidationError('Card key is required', 'card_key')
+    }
+
+    if (!options.card_token || options.card_token.trim() === '') {
+      throw new TapPayValidationError('Card token is required', 'card_token')
+    }
+
+    if (options.amount === undefined || options.amount <= 0) {
+      throw new TapPayValidationError('Amount must be positive', 'amount')
+    }
+
+    if (!options.currency) {
+      throw new TapPayValidationError('Currency is required', 'currency')
+    }
+
+    // Validate order_number if provided
+    if (options.order_number !== undefined && options.order_number.trim() === '') {
+      throw new TapPayValidationError('Order number cannot be empty string', 'order_number')
+    }
+
     const body: PayByTokenRequest = {
       ...options,
       partner_key: this.config.partnerKey,
@@ -252,6 +329,16 @@ export class TapPayClient {
     recTradeId: string,
     options?: Omit<RefundRequest, 'partner_key' | 'rec_trade_id'>
   ): Promise<RefundResponse> {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
+    // Validate amount if provided (must be positive)
+    if (options?.amount !== undefined && options.amount <= 0) {
+      throw new TapPayValidationError('Refund amount must be positive', 'amount')
+    }
+
     const body: RefundRequest = {
       ...options,
       partner_key: this.config.partnerKey,
@@ -280,6 +367,15 @@ export class TapPayClient {
    * ```
    */
   async cancelRefund(recTradeId: string, refundId: string): Promise<RefundCancelResponse> {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
+    if (!refundId || refundId.trim() === '') {
+      throw new TapPayValidationError('Refund ID is required', 'refundId')
+    }
+
     const body: RefundCancelRequest = {
       partner_key: this.config.partnerKey,
       rec_trade_id: recTradeId,
@@ -307,6 +403,11 @@ export class TapPayClient {
    * ```
    */
   async capToday(recTradeId: string): Promise<CapTodayResponse> {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
     const body: CapTodayRequest = {
       partner_key: this.config.partnerKey,
       rec_trade_id: recTradeId,
@@ -332,6 +433,11 @@ export class TapPayClient {
    * ```
    */
   async cancelCapture(recTradeId: string): Promise<CapCancelResponse> {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
     const body: CapCancelRequest = {
       partner_key: this.config.partnerKey,
       rec_trade_id: recTradeId,
@@ -377,6 +483,15 @@ export class TapPayClient {
   async bindCard(
     options: Omit<BindCardRequest, 'partner_key' | 'merchant_id'>
   ): Promise<BindCardResponse> {
+    // Validate required fields
+    if (!options.prime || options.prime.trim() === '') {
+      throw new TapPayValidationError('Prime is required', 'prime')
+    }
+
+    if (!options.currency) {
+      throw new TapPayValidationError('Currency is required', 'currency')
+    }
+
     const body: BindCardRequest = {
       ...options,
       partner_key: this.config.partnerKey,
@@ -404,6 +519,15 @@ export class TapPayClient {
    * ```
    */
   async removeCard(cardKey: string, cardToken: string): Promise<RemoveCardResponse> {
+    // Validate required fields
+    if (!cardKey || cardKey.trim() === '') {
+      throw new TapPayValidationError('Card key is required', 'cardKey')
+    }
+
+    if (!cardToken || cardToken.trim() === '') {
+      throw new TapPayValidationError('Card token is required', 'cardToken')
+    }
+
     const body: RemoveCardRequest = {
       partner_key: this.config.partnerKey,
       card_key: cardKey,
@@ -469,6 +593,11 @@ export class TapPayClient {
    * ```
    */
   async getTransaction(recTradeId: string) {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
     const response = await this.getRecords({
       filters: {
         rec_trade_id: recTradeId,
@@ -495,6 +624,11 @@ export class TapPayClient {
    * ```
    */
   async getTradeHistory(recTradeId: string): Promise<TradeHistoryResponse> {
+    // Validate required fields
+    if (!recTradeId || recTradeId.trim() === '') {
+      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
+    }
+
     const body: TradeHistoryRequest = {
       partner_key: this.config.partnerKey,
       rec_trade_id: recTradeId,
