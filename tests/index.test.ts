@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import packageJson from '../package.json'
 import {
   CardType,
   Currency,
@@ -15,8 +16,8 @@ import {
 
 describe('TapPay Backend Payment SDK', () => {
   describe('VERSION', () => {
-    it('should export the current version', () => {
-      expect(VERSION).toBe('0.0.0')
+    it('should export the current version from package.json', () => {
+      expect(VERSION).toBe(packageJson.version)
     })
 
     it('should be a valid semver string', () => {
