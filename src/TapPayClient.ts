@@ -36,14 +36,14 @@ import type {
 const DEFAULT_TIMEOUT = 30000
 
 /**
- * TapPay Backend Payment Client
+ * TapPay 後端付款客戶端
  *
- * Core class for interacting with TapPay Backend APIs.
- * Provides methods for payment processing, refunds, card management, and transaction queries.
+ * 與 TapPay 後端 API 互動的核心類別。
+ * 提供付款處理、退款、卡片管理和交易查詢等方法。
  *
  * @example
  * ```typescript
- * import { TapPayClient, Env, Currency } from 'tappay-backend-payment'
+ * import { TapPayClient, Env, Currency } from '@carllee1983/tappay-backend-payment-node'
  *
  * const client = new TapPayClient({
  *   partnerKey: 'your_partner_key',
@@ -54,6 +54,7 @@ const DEFAULT_TIMEOUT = 30000
  * const response = await client.payByPrime({
  *   prime: 'prime_from_frontend',
  *   amount: 100,
+ *   currency: Currency.TWD,
  *   details: 'Test Payment'
  * })
  * ```
@@ -61,6 +62,22 @@ const DEFAULT_TIMEOUT = 30000
 export class TapPayClient {
   private readonly config: Required<TapPayConfig>
 
+  /**
+   * 建立 TapPay 客戶端實例
+   *
+   * @param config - TapPay 客戶端配置
+   * @throws {TapPayConfigError} 當配置無效時（例如：缺少必要欄位、timeout 為負數等）
+   *
+   * @example
+   * ```typescript
+   * const client = new TapPayClient({
+   *   partnerKey: 'partner_key_from_portal',
+   *   merchantId: 'merchant_id_from_portal',
+   *   env: Env.Sandbox,
+   *   timeout: 30000 // 30 秒
+   * })
+   * ```
+   */
   constructor(config: TapPayConfig) {
     this.validateConfig(config)
 
@@ -73,7 +90,13 @@ export class TapPayClient {
   }
 
   /**
-   * Validate client configuration
+   * 驗證客戶端配置
+   *
+   * 檢查必要的配置欄位是否有效，如果無效則拋出 TapPayConfigError。
+   *
+   * @param config - TapPay 客戶端配置
+   * @throws {TapPayConfigError} 當配置無效時拋出
+   * @private
    */
   private validateConfig(config: TapPayConfig): void {
     if (!config.partnerKey || config.partnerKey.trim() === '') {
@@ -90,7 +113,17 @@ export class TapPayClient {
   }
 
   /**
-   * Send HTTP request to TapPay API
+   * 發送 HTTP 請求到 TapPay API
+   *
+   * 處理所有與 TapPay API 的通訊，包括錯誤處理、超時控制和回應解析。
+   *
+   * @param endpoint - API 端點路徑（例如：'/tpc/payment/pay-by-prime'）
+   * @param body - 請求主體物件
+   * @returns Promise 解析為 TapPay API 回應
+   * @throws {TapPayError} 當 API 回應狀態碼不為 0 時
+   * @throws {TapPayTimeoutError} 當請求超時時
+   * @throws {TapPayError} 當網路錯誤或回應解析失敗時
+   * @private
    */
   private async sendRequest<T extends TapPayBaseResponse>(
     endpoint: string,
@@ -193,19 +226,23 @@ export class TapPayClient {
   // ============================================================================
 
   /**
-   * Pay by Prime
+   * 使用 Prime Token 付款
    *
-   * Process a payment using a prime token from frontend SDK.
-   * Each prime can only be used once.
+   * 使用前端 SDK 產生的 prime token 進行付款。
+   * 每個 prime token 只能使用一次，有效期限為 90 秒。
    *
-   * @param options - Payment options (without partner_key and merchant_id)
-   * @returns Payment response
+   * @param options - 付款選項（不包含 partner_key 和 merchant_id）
+   * @returns Promise 解析為付款回應
+   * @throws {TapPayValidationError} 當必要欄位缺失或無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
    * const response = await client.payByPrime({
    *   prime: 'test_prime_123',
    *   amount: 100,
+   *   currency: Currency.TWD,
    *   details: 'Test Payment',
    *   cardholder: {
    *     phone_number: '+886912345678',
@@ -246,13 +283,16 @@ export class TapPayClient {
   }
 
   /**
-   * Pay by Card Token
+   * 使用卡片 Token 付款
    *
-   * Process a payment using saved card credentials.
-   * Requires card_key and card_token from previous Pay by Prime with remember=true.
+   * 使用已儲存的卡片憑證進行付款。
+   * 需要從之前使用 remember=true 的 Pay by Prime 交易中取得的 card_key 和 card_token。
    *
-   * @param options - Payment options with card credentials
-   * @returns Payment response
+   * @param options - 付款選項（包含卡片憑證）
+   * @returns Promise 解析為付款回應
+   * @throws {TapPayValidationError} 當必要欄位缺失或無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -307,21 +347,24 @@ export class TapPayClient {
   // ============================================================================
 
   /**
-   * Refund Transaction
+   * 退款交易
    *
-   * Process a full or partial refund.
-   * Omit amount for full refund.
+   * 處理全額或部分退款。
+   * 省略 amount 參數則進行全額退款。
    *
-   * @param recTradeId - TapPay transaction ID to refund
-   * @param options - Optional refund options (amount, bank_refund_id)
-   * @returns Refund response
+   * @param recTradeId - TapPay 交易 ID
+   * @param options - 可選的退款選項（amount, bank_refund_id）
+   * @returns Promise 解析為退款回應
+   * @throws {TapPayValidationError} 當交易 ID 無效或退款金額為負數時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
-   * // Full refund
+   * // 全額退款
    * await client.refund('D20231201123456789')
    *
-   * // Partial refund
+   * // 部分退款
    * await client.refund('D20231201123456789', { amount: 50 })
    * ```
    */
@@ -352,14 +395,17 @@ export class TapPayClient {
   }
 
   /**
-   * Cancel Refund
+   * 取消退款
    *
-   * Cancel a pending refund before bank batch processing.
-   * Currently only supported by Taishin Bank.
+   * 在銀行批次處理前取消待處理的退款。
+   * 目前僅支援台新銀行。
    *
-   * @param recTradeId - TapPay transaction ID
-   * @param refundId - Refund ID to cancel
-   * @returns Refund cancel response
+   * @param recTradeId - TapPay 交易 ID
+   * @param refundId - 要取消的退款 ID
+   * @returns Promise 解析為取消退款回應
+   * @throws {TapPayValidationError} 當交易 ID 或退款 ID 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -389,13 +435,16 @@ export class TapPayClient {
   }
 
   /**
-   * Capture Today
+   * 立即請款（當日）
    *
-   * Capture a transaction immediately (same day).
-   * Use this to change the capture date to today for delayed capture transactions.
+   * 立即請款交易（當日）。
+   * 用於將延遲請款交易的請款日期改為當日。
    *
-   * @param recTradeId - TapPay transaction ID to capture
-   * @returns Cap today response
+   * @param recTradeId - TapPay 交易 ID
+   * @returns Promise 解析為請款回應
+   * @throws {TapPayValidationError} 當交易 ID 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -420,12 +469,15 @@ export class TapPayClient {
   }
 
   /**
-   * Cancel Capture
+   * 取消請款
    *
-   * Cancel a pending capture before bank batch processing.
+   * 在銀行批次處理前取消待處理的請款。
    *
-   * @param recTradeId - TapPay transaction ID
-   * @returns Cap cancel response
+   * @param recTradeId - TapPay 交易 ID
+   * @returns Promise 解析為取消請款回應
+   * @throws {TapPayValidationError} 當交易 ID 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -454,13 +506,16 @@ export class TapPayClient {
   // ============================================================================
 
   /**
-   * Bind Card
+   * 綁定卡片
    *
-   * Bind a card for future token-based payments.
-   * A 1 TWD test transaction will be performed and immediately refunded.
+   * 綁定卡片以供未來的 token 付款使用。
+   * 會執行一筆 1 TWD 的測試交易並立即退款。
    *
-   * @param options - Bind card options
-   * @returns Bind card response with card_key and card_token
+   * @param options - 綁定卡片選項
+   * @returns Promise 解析為綁定卡片回應（包含 card_key 和 card_token）
+   * @throws {TapPayValidationError} 當必要欄位缺失或無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -476,7 +531,7 @@ export class TapPayClient {
    *
    * if (response.card_secret) {
    *   const { card_key, card_token } = response.card_secret
-   *   // Store for future payments
+   *   // 儲存以供未來付款使用
    * }
    * ```
    */
@@ -505,13 +560,16 @@ export class TapPayClient {
   }
 
   /**
-   * Remove Card
+   * 移除綁定的卡片
    *
-   * Remove a bound card from TapPay servers.
+   * 從 TapPay 伺服器移除已綁定的卡片。
    *
-   * @param cardKey - Card key to remove
-   * @param cardToken - Card token to remove
-   * @returns Remove card response
+   * @param cardKey - 要移除的卡片 key
+   * @param cardToken - 要移除的卡片 token
+   * @returns Promise 解析為移除卡片回應
+   * @throws {TapPayValidationError} 當 cardKey 或 cardToken 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -545,13 +603,15 @@ export class TapPayClient {
   // ============================================================================
 
   /**
-   * Query Transaction Records
+   * 查詢交易記錄
    *
-   * Retrieve transaction records with filtering and pagination.
-   * Time range filter is limited to 90 days.
+   * 使用篩選和分頁功能取得交易記錄。
+   * 時間範圍篩選限制為 90 天。
    *
-   * @param options - Query options (filters, pagination, sorting)
-   * @returns Record response with trade records
+   * @param options - 查詢選項（篩選、分頁、排序）
+   * @returns Promise 解析為交易記錄回應
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -577,12 +637,15 @@ export class TapPayClient {
   }
 
   /**
-   * Get single transaction by ID
+   * 根據 ID 取得單筆交易
    *
-   * Convenience method to query a single transaction.
+   * 便利方法，用於查詢單筆交易記錄。
    *
-   * @param recTradeId - TapPay transaction ID
-   * @returns Trade record or null if not found
+   * @param recTradeId - TapPay 交易 ID
+   * @returns Promise 解析為交易記錄，如果找不到則返回 null
+   * @throws {TapPayValidationError} 當交易 ID 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -608,12 +671,15 @@ export class TapPayClient {
   }
 
   /**
-   * Get Trade History
+   * 取得交易歷史記錄
    *
-   * Get detailed transaction history including all events (auth, capture, refund, etc.)
+   * 取得詳細的交易歷史記錄，包含所有事件（授權、請款、退款等）。
    *
-   * @param recTradeId - TapPay transaction ID
-   * @returns Trade history response
+   * @param recTradeId - TapPay 交易 ID
+   * @returns Promise 解析為交易歷史回應
+   * @throws {TapPayValidationError} 當交易 ID 無效時
+   * @throws {TapPayError} 當 API 回應錯誤時
+   * @throws {TapPayTimeoutError} 當請求超時時
    *
    * @example
    * ```typescript
@@ -645,21 +711,30 @@ export class TapPayClient {
   // ============================================================================
 
   /**
-   * Get current environment
+   * 取得當前環境
+   *
+   * @returns 當前使用的 TapPay API 環境（Sandbox 或 Production）
+   * @readonly
    */
   get environment(): Env {
     return this.config.env
   }
 
   /**
-   * Check if using sandbox environment
+   * 檢查是否使用沙盒環境
+   *
+   * @returns 如果使用沙盒環境則返回 true，否則返回 false
+   * @readonly
    */
   get isSandbox(): boolean {
     return this.config.env === Env.Sandbox
   }
 
   /**
-   * Get merchant ID
+   * 取得商家 ID
+   *
+   * @returns 商家 ID
+   * @readonly
    */
   get merchantId(): string {
     return this.config.merchantId

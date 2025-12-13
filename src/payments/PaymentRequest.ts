@@ -3,8 +3,10 @@ import type { ResultUrl } from '../domain/ResultUrl'
 import type { Currency } from '../enums/Currency'
 
 /**
- * Pay by Prime API Request
- * POST /tpc/payment/pay-by-prime
+ * Pay by Prime API 請求
+ *
+ * 使用 Prime Token 付款的請求介面。
+ * API 端點：POST /tpc/payment/pay-by-prime
  */
 export interface PayByPrimeRequest {
   /**
@@ -95,8 +97,10 @@ export interface PayByPrimeRequest {
 }
 
 /**
- * Pay by Card Token API Request
- * POST /tpc/payment/pay-by-token
+ * Pay by Card Token API 請求
+ *
+ * 使用卡片 Token 付款的請求介面。
+ * API 端點：POST /tpc/payment/pay-by-token
  */
 export interface PayByTokenRequest {
   /**
@@ -171,8 +175,10 @@ export interface PayByTokenRequest {
 }
 
 /**
- * Refund API Request
- * POST /tpc/transaction/refund
+ * 退款 API 請求
+ *
+ * 處理退款的請求介面。
+ * API 端點：POST /tpc/transaction/refund
  */
 export interface RefundRequest {
   /**
@@ -197,9 +203,10 @@ export interface RefundRequest {
 }
 
 /**
- * Cap Today API Request
- * POST /tpc/transaction/cap
- * Capture a transaction immediately (same day)
+ * 立即請款 API 請求
+ *
+ * 立即請款交易的請求介面（當日）。
+ * API 端點：POST /tpc/transaction/cap
  */
 export interface CapTodayRequest {
   /**
@@ -214,9 +221,10 @@ export interface CapTodayRequest {
 }
 
 /**
- * Cap Cancel API Request
- * POST /tpc/transaction/cap/cancel
- * Cancel a pending capture before bank batch processing
+ * 取消請款 API 請求
+ *
+ * 在銀行批次處理前取消待處理請款的請求介面。
+ * API 端點：POST /tpc/transaction/cap/cancel
  */
 export interface CapCancelRequest {
   /**
@@ -231,10 +239,11 @@ export interface CapCancelRequest {
 }
 
 /**
- * Refund Cancel API Request
- * POST /tpc/transaction/refund/cancel
- * Cancel a pending refund before bank batch processing
- * Currently only supported by Taishin Bank
+ * 取消退款 API 請求
+ *
+ * 在銀行批次處理前取消待處理退款的請求介面。
+ * 目前僅支援台新銀行。
+ * API 端點：POST /tpc/transaction/refund/cancel
  */
 export interface RefundCancelRequest {
   /**
@@ -254,9 +263,10 @@ export interface RefundCancelRequest {
 }
 
 /**
- * Bind Card API Request
- * POST /tpc/card/bind
- * Bind a card for future token-based payments
+ * 綁定卡片 API 請求
+ *
+ * 綁定卡片以供未來 token 付款使用的請求介面。
+ * API 端點：POST /tpc/card/bind
  */
 export interface BindCardRequest {
   /**
@@ -296,9 +306,10 @@ export interface BindCardRequest {
 }
 
 /**
- * Remove Card API Request
- * POST /tpc/card/remove
- * Remove a bound card from TapPay servers
+ * 移除卡片 API 請求
+ *
+ * 從 TapPay 伺服器移除已綁定卡片的請求介面。
+ * API 端點：POST /tpc/card/remove
  */
 export interface RemoveCardRequest {
   /**
@@ -318,9 +329,10 @@ export interface RemoveCardRequest {
 }
 
 /**
- * Trade History API Request
- * POST /tpc/transaction/trade-history
- * Get detailed transaction history
+ * 交易歷史 API 請求
+ *
+ * 取得詳細交易歷史記錄的請求介面。
+ * API 端點：POST /tpc/transaction/trade-history
  */
 export interface TradeHistoryRequest {
   /**
@@ -335,7 +347,9 @@ export interface TradeHistoryRequest {
 }
 
 /**
- * Record Query Filters
+ * 記錄查詢篩選條件
+ *
+ * 用於查詢交易記錄時的篩選條件。
  */
 export interface RecordFilters {
   /**
@@ -386,7 +400,9 @@ export interface RecordFilters {
 }
 
 /**
- * Record Query Order
+ * 記錄查詢排序
+ *
+ * 用於查詢交易記錄時的排序設定。
  */
 export interface RecordOrder {
   /**
@@ -401,8 +417,10 @@ export interface RecordOrder {
 }
 
 /**
- * Record API Request
- * POST /tpc/transaction/query
+ * 查詢記錄 API 請求
+ *
+ * 查詢交易記錄的請求介面，支援篩選、分頁和排序。
+ * API 端點：POST /tpc/transaction/query
  */
 export interface RecordRequest {
   /**

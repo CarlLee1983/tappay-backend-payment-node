@@ -1,41 +1,56 @@
 /**
- * ISO 4217 Currency Codes supported by TapPay
+ * TapPay 支援的 ISO 4217 貨幣代碼
+ *
+ * 定義所有 TapPay API 支援的貨幣類型。
  */
 export const Currency = {
-  /** Taiwan Dollar */
+  /** 新台幣 */
   TWD: 'TWD',
-  /** US Dollar */
+  /** 美元 */
   USD: 'USD',
-  /** Japanese Yen */
+  /** 日圓 */
   JPY: 'JPY',
-  /** Hong Kong Dollar */
+  /** 港幣 */
   HKD: 'HKD',
-  /** Malaysian Ringgit */
+  /** 馬來西亞令吉 */
   MYR: 'MYR',
-  /** Singapore Dollar */
+  /** 新加坡幣 */
   SGD: 'SGD',
-  /** Indonesian Rupiah */
+  /** 印尼盾 */
   IDR: 'IDR',
-  /** Thai Baht */
+  /** 泰銖 */
   THB: 'THB',
-  /** Philippine Peso */
+  /** 菲律賓披索 */
   PHP: 'PHP',
-  /** Vietnamese Dong */
+  /** 越南盾 */
   VND: 'VND',
-  /** Australian Dollar */
+  /** 澳幣 */
   AUD: 'AUD',
-  /** Euro */
+  /** 歐元 */
   EUR: 'EUR',
-  /** British Pound */
+  /** 英鎊 */
   GBP: 'GBP',
 } as const
 
+/**
+ * 貨幣類型
+ */
 export type Currency = (typeof Currency)[keyof typeof Currency]
 
 /**
- * Multiplier for currency amounts
- * Most currencies need to be multiplied by 100 for TapPay API
- * Exception: TWD uses actual value
+ * 貨幣金額乘數
+ *
+ * 大部分貨幣需要乘以 100 才能傳送給 TapPay API（例如：USD $1.00 = 100）。
+ * 例外：TWD、JPY、IDR、VND 使用實際數值。
+ *
+ * @example
+ * ```typescript
+ * // TWD 使用實際數值
+ * const twdAmount = 100 // 100 TWD
+ *
+ * // USD 需要乘以 100
+ * const usdAmount = 100 * CurrencyMultiplier[Currency.USD] // 100 = $1.00
+ * ```
  */
 export const CurrencyMultiplier: Record<Currency, number> = {
   [Currency.TWD]: 1,

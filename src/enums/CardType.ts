@@ -1,19 +1,35 @@
 /**
- * Card Type
+ * 卡片類型枚舉
+ *
+ * 定義 TapPay 支援的卡片類型。
  */
 export const CardType = {
-  /** Credit Card */
+  /** 信用卡 */
   Credit: 1,
-  /** Debit Card */
+  /** 金融卡 */
   Debit: 2,
-  /** Prepaid Card */
+  /** 預付卡 */
   Prepaid: 3,
 } as const
 
+/**
+ * 卡片類型
+ */
 export type CardType = (typeof CardType)[keyof typeof CardType]
 
 /**
- * Get card type name
+ * 取得卡片類型名稱
+ *
+ * 將卡片類型數值轉換為可讀的字串名稱。
+ *
+ * @param type - 卡片類型數值
+ * @returns 卡片類型名稱（'Credit', 'Debit', 'Prepaid' 或 'Unknown'）
+ *
+ * @example
+ * ```typescript
+ * const typeName = getCardTypeName(CardType.Credit) // 'Credit'
+ * const unknown = getCardTypeName(999) // 'Unknown'
+ * ```
  */
 export function getCardTypeName(type: CardType): string {
   switch (type) {

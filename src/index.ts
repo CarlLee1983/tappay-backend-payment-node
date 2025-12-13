@@ -1,15 +1,45 @@
 /**
- * TapPay Backend Payment SDK for Node.js
+ * TapPay 後端付款 SDK for Node.js
  *
- * A TypeScript SDK for TapPay Backend Payment APIs.
+ * 一個完整的 TypeScript SDK，用於與 TapPay 後端付款 API 互動。
+ * 提供完整的類型支援、錯誤處理和輸入驗證。
  *
- * @module tappay-backend-payment
- * @see https://docs.tappaysdk.com/tutorial/zh/back.html
+ * @module @carllee1983/tappay-backend-payment-node
+ * @see {@link https://docs.tappaysdk.com/tutorial/zh/back.html TapPay 官方文件}
+ *
+ * @example
+ * ```typescript
+ * import { TapPayClient, Env, Currency } from '@carllee1983/tappay-backend-payment-node'
+ *
+ * const client = new TapPayClient({
+ *   partnerKey: 'your_partner_key',
+ *   merchantId: 'your_merchant_id',
+ *   env: Env.Sandbox
+ * })
+ *
+ * const response = await client.payByPrime({
+ *   prime: 'prime_from_frontend',
+ *   amount: 100,
+ *   currency: Currency.TWD,
+ *   details: 'Test Payment'
+ * })
+ * ```
  */
 
 // Export version from package.json
 import packageJson from '../package.json'
 
+/**
+ * SDK 版本號
+ *
+ * 從 package.json 自動匯出的版本號。
+ *
+ * @example
+ * ```typescript
+ * import { VERSION } from '@carllee1983/tappay-backend-payment-node'
+ * console.log(`SDK Version: ${VERSION}`)
+ * ```
+ */
 export const VERSION = packageJson.version
 
 // ============================================================================

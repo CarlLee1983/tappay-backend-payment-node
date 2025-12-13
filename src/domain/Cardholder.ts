@@ -1,6 +1,19 @@
 /**
- * Cardholder information for transactions
- * Used for fraud detection and 3D Secure verification
+ * 持卡人資訊
+ *
+ * 用於交易時的持卡人資訊，用於詐欺偵測和 3D Secure 驗證。
+ *
+ * @example
+ * ```typescript
+ * const cardholder: Cardholder = {
+ *   phone_number: '+886912345678',
+ *   name: '王小明',
+ *   name_en: 'Wang Xiao Ming',
+ *   email: 'user@example.com',
+ *   zip_code: '100',
+ *   address: '台北市信義區信義路五段7號'
+ * }
+ * ```
  */
 export interface Cardholder {
   /**

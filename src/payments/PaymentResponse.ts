@@ -2,22 +2,26 @@ import type { CardInfo, CardSecret } from '../domain/CardInfo'
 import type { Currency } from '../enums/Currency'
 
 /**
- * Base TapPay API Response
+ * TapPay API 基礎回應
+ *
+ * 所有 TapPay API 回應的基礎介面。
  */
 export interface TapPayBaseResponse {
   /**
-   * Status code (0 = success)
+   * 狀態碼（0 表示成功，其他值表示錯誤）
    */
   status: number
 
   /**
-   * Status message
+   * 狀態訊息
    */
   msg: string
 }
 
 /**
- * Pay by Prime / Pay by Token API Response
+ * Pay by Prime / Pay by Token API 回應
+ *
+ * 使用 Prime Token 或 Card Token 付款時的回應。
  */
 export interface PaymentResponse extends TapPayBaseResponse {
   /**
@@ -100,7 +104,9 @@ export interface PaymentResponse extends TapPayBaseResponse {
 }
 
 /**
- * Refund API Response
+ * 退款 API 回應
+ *
+ * 處理退款時的回應。
  */
 export interface RefundResponse extends TapPayBaseResponse {
   /**
@@ -130,7 +136,9 @@ export interface RefundResponse extends TapPayBaseResponse {
 }
 
 /**
- * Cap Today API Response
+ * 立即請款 API 回應
+ *
+ * 執行立即請款時的回應。
  */
 export interface CapTodayResponse extends TapPayBaseResponse {
   /**
@@ -140,7 +148,9 @@ export interface CapTodayResponse extends TapPayBaseResponse {
 }
 
 /**
- * Cap Cancel API Response
+ * 取消請款 API 回應
+ *
+ * 取消請款時的回應。
  */
 export interface CapCancelResponse extends TapPayBaseResponse {
   /**
@@ -150,7 +160,9 @@ export interface CapCancelResponse extends TapPayBaseResponse {
 }
 
 /**
- * Refund Cancel API Response
+ * 取消退款 API 回應
+ *
+ * 取消退款時的回應。
  */
 export interface RefundCancelResponse extends TapPayBaseResponse {
   /**
@@ -165,7 +177,9 @@ export interface RefundCancelResponse extends TapPayBaseResponse {
 }
 
 /**
- * Bind Card API Response
+ * 綁定卡片 API 回應
+ *
+ * 綁定卡片時的回應，包含 card_secret 以供未來使用。
  */
 export interface BindCardResponse extends TapPayBaseResponse {
   /**
@@ -190,7 +204,9 @@ export interface BindCardResponse extends TapPayBaseResponse {
 }
 
 /**
- * Remove Card API Response
+ * 移除卡片 API 回應
+ *
+ * 移除已綁定卡片時的回應。
  */
 export interface RemoveCardResponse extends TapPayBaseResponse {
   /**
@@ -205,7 +221,9 @@ export interface RemoveCardResponse extends TapPayBaseResponse {
 }
 
 /**
- * Trade History Event
+ * 交易歷史事件
+ *
+ * 代表交易歷史中的單一事件（例如：授權、請款、退款等）。
  */
 export interface TradeHistoryEvent {
   /**
@@ -235,7 +253,9 @@ export interface TradeHistoryEvent {
 }
 
 /**
- * Trade History API Response
+ * 交易歷史 API 回應
+ *
+ * 取得交易歷史記錄時的回應，包含所有交易事件。
  */
 export interface TradeHistoryResponse extends TapPayBaseResponse {
   /**
@@ -285,7 +305,9 @@ export interface TradeHistoryResponse extends TapPayBaseResponse {
 }
 
 /**
- * Trade Record
+ * 交易記錄
+ *
+ * 代表單筆交易記錄，包含交易的所有相關資訊。
  */
 export interface TradeRecord {
   /**
@@ -365,7 +387,9 @@ export interface TradeRecord {
 }
 
 /**
- * Refund Record
+ * 退款記錄
+ *
+ * 代表單筆退款記錄。
  */
 export interface RefundRecord {
   /**
@@ -385,7 +409,9 @@ export interface RefundRecord {
 }
 
 /**
- * Record API Response
+ * 查詢記錄 API 回應
+ *
+ * 查詢交易記錄時的回應，包含分頁資訊和交易記錄列表。
  */
 export interface RecordResponse extends TapPayBaseResponse {
   /**
@@ -415,8 +441,22 @@ export interface RecordResponse extends TapPayBaseResponse {
 }
 
 /**
- * Backend Notify Request Body
- * Sent by TapPay to backend_notify_url
+ * 後端通知請求主體
+ *
+ * TapPay 發送到 backend_notify_url 的請求主體。
+ * 用於 3D Secure 和電子支付的異步通知。
+ *
+ * @example
+ * ```typescript
+ * // Express.js 範例
+ * app.post('/api/notify', (req, res) => {
+ *   const payload: BackendNotifyPayload = req.body
+ *   if (payload.status === 0) {
+ *     console.log(`交易成功: ${payload.rec_trade_id}`)
+ *   }
+ *   res.status(200).send('OK')
+ * })
+ * ```
  */
 export interface BackendNotifyPayload {
   /**
