@@ -13,6 +13,13 @@ import {
   TapPayValidationError,
   VERSION,
 } from '../src'
+import {
+  validateAmount,
+  validateConfig,
+  validateOptionalField,
+  validateRequired,
+  validateRequiredField,
+} from '../src/utils/validators'
 
 describe('TapPay Backend Payment SDK', () => {
   describe('VERSION', () => {
@@ -1199,6 +1206,226 @@ describe('TapPay Backend Payment SDK', () => {
       const error = new TapPayValidationError('Test error')
       expect(error.stack).toBeDefined()
       expect(error.stack).toContain('TapPayValidationError')
+    })
+  })
+
+  describe('Validators', () => {
+    describe('validateRequired', () => {
+      it('should pass for non-empty string', () => {
+        expect(() => validateRequired('test_value', 'field')).not.toThrow()
+      })
+
+      it('should throw for undefined', () => {
+        expect(() => validateRequired(undefined, 'field')).toThrow(TapPayValidationError)
+        expect(() => validateRequired(undefined, 'field')).toThrow('field is required')
+      })
+
+      it('should throw for empty string', () => {
+        expect(() => validateRequired('', 'field')).toThrow(TapPayValidationError)
+        expect(() => validateRequired('', 'field')).toThrow('field is required')
+      })
+
+      it('should throw for whitespace-only string', () => {
+        expect(() => validateRequired('   ', 'field')).toThrow(TapPayValidationError)
+        expect(() => validateRequired('   ', 'field')).toThrow('field is required')
+      })
+
+      it('should throw for string with tabs and newlines', () => {
+        expect(() => validateRequired('\t\n', 'field')).toThrow(TapPayValidationError)
+      })
+    })
+
+    describe('validateAmount', () => {
+      it('should pass for positive number', () => {
+        expect(() => validateAmount(100, 'amount')).not.toThrow()
+      })
+
+      it('should pass for decimal number', () => {
+        expect(() => validateAmount(99.99, 'amount')).not.toThrow()
+      })
+
+      it('should throw for undefined', () => {
+        expect(() => validateAmount(undefined, 'amount')).toThrow(TapPayValidationError)
+        expect(() => validateAmount(undefined, 'amount')).toThrow('amount must be positive')
+      })
+
+      it('should throw for zero', () => {
+        expect(() => validateAmount(0, 'amount')).toThrow(TapPayValidationError)
+        expect(() => validateAmount(0, 'amount')).toThrow('amount must be positive')
+      })
+
+      it('should throw for negative number', () => {
+        expect(() => validateAmount(-100, 'amount')).toThrow(TapPayValidationError)
+        expect(() => validateAmount(-100, 'amount')).toThrow('amount must be positive')
+      })
+    })
+
+    describe('validateOptionalField', () => {
+      it('should pass for undefined', () => {
+        expect(() => validateOptionalField(undefined, 'field')).not.toThrow()
+      })
+
+      it('should pass for non-empty string', () => {
+        expect(() => validateOptionalField('value', 'field')).not.toThrow()
+      })
+
+      it('should throw for empty string', () => {
+        expect(() => validateOptionalField('', 'field')).toThrow(TapPayValidationError)
+        expect(() => validateOptionalField('', 'field')).toThrow(
+          'field must be non-empty if provided'
+        )
+      })
+
+      it('should throw for whitespace-only string', () => {
+        expect(() => validateOptionalField('   ', 'field')).toThrow(TapPayValidationError)
+        expect(() => validateOptionalField('   ', 'field')).toThrow(
+          'field must be non-empty if provided'
+        )
+      })
+    })
+
+    describe('validateRequiredField', () => {
+      it('should pass for truthy value', () => {
+        expect(() => validateRequiredField('value', 'field')).not.toThrow()
+        expect(() => validateRequiredField(1, 'field')).not.toThrow()
+        expect(() => validateRequiredField(true, 'field')).not.toThrow()
+      })
+
+      it('should throw for undefined', () => {
+        expect(() => validateRequiredField(undefined, 'field')).toThrow(TapPayValidationError)
+        expect(() => validateRequiredField(undefined, 'field')).toThrow('field is required')
+      })
+
+      it('should throw for null', () => {
+        expect(() => validateRequiredField(null, 'field')).toThrow(TapPayValidationError)
+        expect(() => validateRequiredField(null, 'field')).toThrow('field is required')
+      })
+
+      it('should throw for empty string', () => {
+        expect(() => validateRequiredField('', 'field')).toThrow(TapPayValidationError)
+      })
+
+      it('should throw for zero', () => {
+        expect(() => validateRequiredField(0, 'field')).toThrow(TapPayValidationError)
+      })
+
+      it('should throw for false', () => {
+        expect(() => validateRequiredField(false, 'field')).toThrow(TapPayValidationError)
+      })
+    })
+
+    describe('validateConfig', () => {
+      it('should pass for valid config', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+          })
+        ).not.toThrow()
+      })
+
+      it('should pass for valid config with timeout', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+            timeout: 30000,
+          })
+        ).not.toThrow()
+      })
+
+      it('should throw for empty partnerKey', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: '',
+            merchantId: 'test_merchant',
+          })
+        ).toThrow(TapPayConfigError)
+        expect(() =>
+          validateConfig({
+            partnerKey: '',
+            merchantId: 'test_merchant',
+          })
+        ).toThrow('Partner Key is required')
+      })
+
+      it('should throw for whitespace-only partnerKey', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: '   ',
+            merchantId: 'test_merchant',
+          })
+        ).toThrow(TapPayConfigError)
+      })
+
+      it('should throw for undefined partnerKey', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: undefined as unknown as string,
+            merchantId: 'test_merchant',
+          })
+        ).toThrow(TapPayConfigError)
+      })
+
+      it('should throw for empty merchantId', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: '',
+          })
+        ).toThrow(TapPayConfigError)
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: '',
+          })
+        ).toThrow('Merchant ID is required')
+      })
+
+      it('should throw for whitespace-only merchantId', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: '   ',
+          })
+        ).toThrow(TapPayConfigError)
+      })
+
+      it('should throw for zero timeout', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+            timeout: 0,
+          })
+        ).toThrow(TapPayConfigError)
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+            timeout: 0,
+          })
+        ).toThrow('Timeout must be positive')
+      })
+
+      it('should throw for negative timeout', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+            timeout: -1,
+          })
+        ).toThrow(TapPayConfigError)
+      })
+
+      it('should allow no timeout (optional)', () => {
+        expect(() =>
+          validateConfig({
+            partnerKey: 'test_key',
+            merchantId: 'test_merchant',
+          })
+        ).not.toThrow()
+      })
     })
   })
 })

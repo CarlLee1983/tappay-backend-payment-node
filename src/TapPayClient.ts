@@ -1,9 +1,7 @@
 import { Env } from './config/Env'
 import type { TapPayConfig } from './config/TapPayConfig'
-import { TapPayConfigError } from './errors/TapPayConfigError'
 import { TapPayError } from './errors/TapPayError'
 import { TapPayTimeoutError } from './errors/TapPayTimeoutError'
-import { TapPayValidationError } from './errors/TapPayValidationError'
 import type {
   BindCardRequest,
   CapCancelRequest,
@@ -28,6 +26,13 @@ import type {
   TapPayBaseResponse,
   TradeHistoryResponse,
 } from './payments/PaymentResponse'
+import {
+  validateAmount,
+  validateConfig,
+  validateOptionalField,
+  validateRequired,
+  validateRequiredField,
+} from './utils/validators'
 
 /**
  * Default timeout in milliseconds
@@ -99,17 +104,8 @@ export class TapPayClient {
    * @private
    */
   private validateConfig(config: TapPayConfig): void {
-    if (!config.partnerKey || config.partnerKey.trim() === '') {
-      throw new TapPayConfigError('Partner Key is required', 'partnerKey')
-    }
-
-    if (!config.merchantId || config.merchantId.trim() === '') {
-      throw new TapPayConfigError('Merchant ID is required', 'merchantId')
-    }
-
-    if (config.timeout !== undefined && config.timeout <= 0) {
-      throw new TapPayConfigError('Timeout must be positive', 'timeout')
-    }
+    // 使用驗證模組中的 validateConfig 函數
+    validateConfig(config)
   }
 
   /**
@@ -257,18 +253,9 @@ export class TapPayClient {
     options: Omit<PayByPrimeRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
     // Validate required fields
-    if (!options.prime || options.prime.trim() === '') {
-      throw new TapPayValidationError('Prime is required', 'prime')
-    }
-
-    if (options.amount === undefined || options.amount <= 0) {
-      throw new TapPayValidationError('Amount must be positive', 'amount')
-    }
-
-    // Validate order_number if provided (cannot be empty string)
-    if (options.order_number !== undefined && options.order_number.trim() === '') {
-      throw new TapPayValidationError('Order number cannot be empty string', 'order_number')
-    }
+    validateRequired(options.prime, 'prime')
+    validateAmount(options.amount, 'amount')
+    validateOptionalField(options.order_number, 'order_number')
 
     const body: PayByPrimeRequest = {
       ...options,
@@ -309,26 +296,11 @@ export class TapPayClient {
     options: Omit<PayByTokenRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
     // Validate required fields
-    if (!options.card_key || options.card_key.trim() === '') {
-      throw new TapPayValidationError('Card key is required', 'card_key')
-    }
-
-    if (!options.card_token || options.card_token.trim() === '') {
-      throw new TapPayValidationError('Card token is required', 'card_token')
-    }
-
-    if (options.amount === undefined || options.amount <= 0) {
-      throw new TapPayValidationError('Amount must be positive', 'amount')
-    }
-
-    if (!options.currency) {
-      throw new TapPayValidationError('Currency is required', 'currency')
-    }
-
-    // Validate order_number if provided
-    if (options.order_number !== undefined && options.order_number.trim() === '') {
-      throw new TapPayValidationError('Order number cannot be empty string', 'order_number')
-    }
+    validateRequired(options.card_key, 'card_key')
+    validateRequired(options.card_token, 'card_token')
+    validateAmount(options.amount, 'amount')
+    validateRequiredField(options.currency, 'currency')
+    validateOptionalField(options.order_number, 'order_number')
 
     const body: PayByTokenRequest = {
       ...options,
@@ -373,13 +345,11 @@ export class TapPayClient {
     options?: Omit<RefundRequest, 'partner_key' | 'rec_trade_id'>
   ): Promise<RefundResponse> {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
 
     // Validate amount if provided (must be positive)
-    if (options?.amount !== undefined && options.amount <= 0) {
-      throw new TapPayValidationError('Refund amount must be positive', 'amount')
+    if (options?.amount !== undefined) {
+      validateAmount(options.amount, 'amount')
     }
 
     const body: RefundRequest = {
@@ -414,13 +384,8 @@ export class TapPayClient {
    */
   async cancelRefund(recTradeId: string, refundId: string): Promise<RefundCancelResponse> {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
-
-    if (!refundId || refundId.trim() === '') {
-      throw new TapPayValidationError('Refund ID is required', 'refundId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
+    validateRequired(refundId, 'refundId')
 
     const body: RefundCancelRequest = {
       partner_key: this.config.partnerKey,
@@ -453,9 +418,7 @@ export class TapPayClient {
    */
   async capToday(recTradeId: string): Promise<CapTodayResponse> {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
 
     const body: CapTodayRequest = {
       partner_key: this.config.partnerKey,
@@ -486,9 +449,7 @@ export class TapPayClient {
    */
   async cancelCapture(recTradeId: string): Promise<CapCancelResponse> {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
 
     const body: CapCancelRequest = {
       partner_key: this.config.partnerKey,
@@ -539,13 +500,8 @@ export class TapPayClient {
     options: Omit<BindCardRequest, 'partner_key' | 'merchant_id'>
   ): Promise<BindCardResponse> {
     // Validate required fields
-    if (!options.prime || options.prime.trim() === '') {
-      throw new TapPayValidationError('Prime is required', 'prime')
-    }
-
-    if (!options.currency) {
-      throw new TapPayValidationError('Currency is required', 'currency')
-    }
+    validateRequired(options.prime, 'prime')
+    validateRequiredField(options.currency, 'currency')
 
     const body: BindCardRequest = {
       ...options,
@@ -578,13 +534,8 @@ export class TapPayClient {
    */
   async removeCard(cardKey: string, cardToken: string): Promise<RemoveCardResponse> {
     // Validate required fields
-    if (!cardKey || cardKey.trim() === '') {
-      throw new TapPayValidationError('Card key is required', 'cardKey')
-    }
-
-    if (!cardToken || cardToken.trim() === '') {
-      throw new TapPayValidationError('Card token is required', 'cardToken')
-    }
+    validateRequired(cardKey, 'cardKey')
+    validateRequired(cardToken, 'cardToken')
 
     const body: RemoveCardRequest = {
       partner_key: this.config.partnerKey,
@@ -657,9 +608,7 @@ export class TapPayClient {
    */
   async getTransaction(recTradeId: string) {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
 
     const response = await this.getRecords({
       filters: {
@@ -691,9 +640,7 @@ export class TapPayClient {
    */
   async getTradeHistory(recTradeId: string): Promise<TradeHistoryResponse> {
     // Validate required fields
-    if (!recTradeId || recTradeId.trim() === '') {
-      throw new TapPayValidationError('Transaction ID is required', 'recTradeId')
-    }
+    validateRequired(recTradeId, 'recTradeId')
 
     const body: TradeHistoryRequest = {
       partner_key: this.config.partnerKey,
