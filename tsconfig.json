@@ -1,5 +1,7 @@
 {
     "compilerOptions": {
+        // TS 6.0 Compatibility
+        "ignoreDeprecations": "6.0",
         // Target & Module
         "target": "ESNext",
         "module": "ESNext",
