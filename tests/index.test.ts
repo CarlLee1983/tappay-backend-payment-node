@@ -5,13 +5,18 @@ import {
   Currency,
   CurrencyMultiplier,
   Env,
+  generateWebhookSignature,
   getCardTypeName,
+  isRetryableError,
+  retryWithBackoff,
+  scrubErrorForLogging,
   TapPayClient,
   TapPayConfigError,
   TapPayError,
   TapPayTimeoutError,
   TapPayValidationError,
   VERSION,
+  verifyTapPayWebhook,
 } from '../src'
 import {
   validateAmount,
@@ -1425,6 +1430,592 @@ describe('TapPay Backend Payment SDK', () => {
             merchantId: 'test_merchant',
           })
         ).not.toThrow()
+      })
+    })
+  })
+
+  // ============================================================================
+  // Webhook Tools Tests
+  // ============================================================================
+  describe('Webhook Tools', () => {
+    describe('verifyTapPayWebhook', () => {
+      const testPayload = { status: 0, message: 'Success', amount: 1000 }
+      const partnerKey = 'test_partner_key_123'
+
+      it('should verify valid signature', () => {
+        const signature = generateWebhookSignature(testPayload, partnerKey)
+        const result = verifyTapPayWebhook(testPayload, signature, partnerKey)
+        expect(result).toBe(true)
+      })
+
+      it('should reject invalid signature', () => {
+        const invalidSignature = 'invalid_signature_hex'
+        const result = verifyTapPayWebhook(testPayload, invalidSignature, partnerKey)
+        expect(result).toBe(false)
+      })
+
+      it('should reject tampered payload', () => {
+        const signature = generateWebhookSignature(testPayload, partnerKey)
+        const tamperedPayload = { ...testPayload, amount: 2000 }
+        const result = verifyTapPayWebhook(tamperedPayload, signature, partnerKey)
+        expect(result).toBe(false)
+      })
+
+      it('should handle empty payload object', () => {
+        const emptyPayload: Record<string, unknown> = {}
+        const signature = generateWebhookSignature(emptyPayload, partnerKey)
+        const result = verifyTapPayWebhook(emptyPayload, signature, partnerKey)
+        expect(result).toBe(true)
+      })
+
+      it('should handle complex nested payload', () => {
+        const complexPayload = {
+          status: 0,
+          info: {
+            transactionId: '12345',
+            details: {
+              amount: 1000,
+              currency: 'TWD',
+            },
+          },
+        }
+        const signature = generateWebhookSignature(complexPayload, partnerKey)
+        const result = verifyTapPayWebhook(complexPayload, signature, partnerKey)
+        expect(result).toBe(true)
+      })
+
+      it('should reject null payload', () => {
+        const result = verifyTapPayWebhook(
+          null as unknown as Record<string, unknown>,
+          'sig',
+          partnerKey
+        )
+        expect(result).toBe(false)
+      })
+
+      it('should reject undefined payload', () => {
+        const result = verifyTapPayWebhook(
+          undefined as unknown as Record<string, unknown>,
+          'sig',
+          partnerKey
+        )
+        expect(result).toBe(false)
+      })
+
+      it('should reject null signature', () => {
+        const result = verifyTapPayWebhook(testPayload, null as unknown as string, partnerKey)
+        expect(result).toBe(false)
+      })
+
+      it('should reject empty signature', () => {
+        const result = verifyTapPayWebhook(testPayload, '', partnerKey)
+        expect(result).toBe(false)
+      })
+
+      it('should reject null partnerKey', () => {
+        const signature = generateWebhookSignature(testPayload, partnerKey)
+        const result = verifyTapPayWebhook(testPayload, signature, null as unknown as string)
+        expect(result).toBe(false)
+      })
+
+      it('should reject empty partnerKey', () => {
+        const result = verifyTapPayWebhook(testPayload, 'signature', '')
+        expect(result).toBe(false)
+      })
+
+      it('should generate same signature for same payload', () => {
+        const sig1 = generateWebhookSignature(testPayload, partnerKey)
+        const sig2 = generateWebhookSignature(testPayload, partnerKey)
+        expect(sig1).toBe(sig2)
+      })
+
+      it('should generate different signature for different payload', () => {
+        const payload1 = { status: 0 }
+        const payload2 = { status: 1 }
+        const sig1 = generateWebhookSignature(payload1, partnerKey)
+        const sig2 = generateWebhookSignature(payload2, partnerKey)
+        expect(sig1).not.toBe(sig2)
+      })
+
+      it('should generate different signature for different partnerKey', () => {
+        const key1 = 'key_1'
+        const key2 = 'key_2'
+        const sig1 = generateWebhookSignature(testPayload, key1)
+        const sig2 = generateWebhookSignature(testPayload, key2)
+        expect(sig1).not.toBe(sig2)
+      })
+
+      it('should detect tampering with transaction ID', () => {
+        const payload = { rec_trade_id: 'original_id', amount: 1000 }
+        const signature = generateWebhookSignature(payload, partnerKey)
+        const tamperedPayload = { rec_trade_id: 'hacked_id', amount: 1000 }
+        const result = verifyTapPayWebhook(tamperedPayload, signature, partnerKey)
+        expect(result).toBe(false)
+      })
+
+      it('should detect tampering with amount', () => {
+        const payload = { amount: 1000, currency: 'TWD' }
+        const signature = generateWebhookSignature(payload, partnerKey)
+        const tamperedPayload = { amount: 9999, currency: 'TWD' }
+        const result = verifyTapPayWebhook(tamperedPayload, signature, partnerKey)
+        expect(result).toBe(false)
+      })
+    })
+
+    describe('generateWebhookSignature', () => {
+      it('should return hex string signature', () => {
+        const payload = { test: true }
+        const sig = generateWebhookSignature(payload, 'key')
+        expect(typeof sig).toBe('string')
+        expect(/^[0-9a-f]+$/.test(sig)).toBe(true)
+      })
+
+      it('should handle empty payload', () => {
+        const sig = generateWebhookSignature({}, 'key')
+        expect(typeof sig).toBe('string')
+        expect(sig.length).toBeGreaterThan(0)
+      })
+    })
+  })
+
+  // ============================================================================
+  // Retry Tools Tests
+  // ============================================================================
+  describe('Retry Tools', () => {
+    describe('retryWithBackoff', () => {
+      it('should succeed on first try', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          return 'success'
+        }
+
+        const result = await retryWithBackoff(operation)
+        expect(result).toBe('success')
+        expect(attempts).toBe(1)
+      })
+
+      it('should retry on failure and eventually succeed', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          if (attempts < 3) {
+            throw new Error('Temporary failure')
+          }
+          return 'success'
+        }
+
+        const result = await retryWithBackoff(operation, { maxRetries: 5 })
+        expect(result).toBe('success')
+        expect(attempts).toBe(3)
+      })
+
+      it('should throw after max retries exceeded', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          throw new Error('Persistent failure')
+        }
+
+        try {
+          await retryWithBackoff(operation, { maxRetries: 2 })
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof Error).toBe(true)
+          if (error instanceof Error) {
+            expect(error.message).toBe('Persistent failure')
+          }
+          expect(attempts).toBe(3) // Initial + 2 retries
+        }
+      })
+
+      it('should execute only once when maxRetries is 0', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          throw new Error('Failed')
+        }
+
+        try {
+          await retryWithBackoff(operation, { maxRetries: 0 })
+          expect.unreachable()
+        } catch {
+          expect(attempts).toBe(1)
+        }
+      })
+
+      it('should respect custom maxRetries', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          throw new Error('Failed')
+        }
+
+        try {
+          await retryWithBackoff(operation, { maxRetries: 4 })
+          expect.unreachable()
+        } catch {
+          expect(attempts).toBe(5) // Initial + 4 retries
+        }
+      })
+
+      it('should use exponential backoff with default multiplier', async () => {
+        let attempts = 0
+        const startTime = Date.now()
+
+        const operation = async () => {
+          attempts++
+          if (attempts < 3) {
+            throw new Error('Retry me')
+          }
+          return 'success'
+        }
+
+        await retryWithBackoff(operation, {
+          maxRetries: 3,
+          baseDelay: 50,
+          backoffMultiplier: 2,
+        })
+
+        const totalTime = Date.now() - startTime
+        // With 2 retries and delays of 50ms and 100ms, minimum total should be ~150ms
+        expect(totalTime).toBeGreaterThanOrEqual(100)
+        expect(attempts).toBe(3)
+      })
+
+      it('should respect maxDelay upper bound', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          if (attempts < 4) {
+            throw new Error('Retry')
+          }
+          return 'success'
+        }
+
+        const startTime = Date.now()
+        await retryWithBackoff(operation, {
+          maxRetries: 5,
+          baseDelay: 100,
+          maxDelay: 200,
+          backoffMultiplier: 10,
+        })
+
+        const totalTime = Date.now() - startTime
+        // With maxDelay of 200, should not exceed ~600ms (3 retries * 200ms)
+        expect(totalTime).toBeLessThan(1000)
+      })
+
+      it('should respect shouldRetry condition', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          const error = new Error('Non-retryable error') as unknown as Record<string, unknown>
+          error.code = 'VALIDATION_ERROR'
+          throw error
+        }
+
+        const shouldRetry = (error: unknown) => {
+          const errObj = error as Record<string, unknown>
+          if (errObj && 'code' in errObj) {
+            return errObj.code !== 'VALIDATION_ERROR'
+          }
+          return true
+        }
+
+        try {
+          await retryWithBackoff(operation, { shouldRetry })
+          expect.unreachable()
+        } catch {
+          // Should fail immediately without retrying
+          expect(attempts).toBe(1)
+        }
+      })
+
+      it('should retry when shouldRetry returns true', async () => {
+        let attempts = 0
+        const operation = async () => {
+          attempts++
+          if (attempts < 2) {
+            throw new Error('Retryable error')
+          }
+          return 'success'
+        }
+
+        const shouldRetry = () => true
+
+        const result = await retryWithBackoff(operation, { shouldRetry })
+        expect(result).toBe('success')
+        expect(attempts).toBe(2)
+      })
+
+      it('should preserve original error on failure', async () => {
+        const originalError = new Error('Original error message')
+        const operation = async () => {
+          throw originalError
+        }
+
+        try {
+          await retryWithBackoff(operation, { maxRetries: 1 })
+          expect.unreachable()
+        } catch (error) {
+          expect(error).toBe(originalError)
+        }
+      })
+
+      it('should handle generic objects as operation results', async () => {
+        const resultObject = { id: 123, value: 'test' }
+        const operation = async () => resultObject
+
+        const result = await retryWithBackoff(operation)
+        expect(result).toBe(resultObject)
+      })
+    })
+  })
+
+  // ============================================================================
+  // Error Handling Tools Tests
+  // ============================================================================
+  describe('Error Handling Tools', () => {
+    describe('scrubErrorForLogging', () => {
+      it('should remove prime field from error', () => {
+        const error = {
+          message: 'Payment failed',
+          prime: 'very_sensitive_prime_string',
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).not.toContain('very_sensitive_prime_string')
+      })
+
+      it('should remove card number from error', () => {
+        const error = {
+          message: 'Card error',
+          card_number: '4242424242424242',
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).not.toContain('4242424242424242')
+      })
+
+      it('should remove amount field from error', () => {
+        const error = {
+          message: 'Amount validation failed',
+          amount: 9999,
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).not.toContain('9999')
+      })
+
+      it('should preserve rec_trade_id in error', () => {
+        const error = {
+          message: 'Transaction failed',
+          rec_trade_id: 'trade_12345',
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).toContain('trade_12345')
+      })
+
+      it('should preserve status code in error', () => {
+        const error = {
+          statusCode: 400,
+          message: 'Bad request',
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).toContain('400')
+      })
+
+      it('should handle Error objects', () => {
+        const error = new Error('Test error message')
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).toContain('Test error message')
+      })
+
+      it('should handle null input', () => {
+        const scrubbed = scrubErrorForLogging(null)
+        expect(typeof scrubbed).toBe('string')
+        expect(scrubbed.length).toBeGreaterThan(0)
+      })
+
+      it('should handle undefined input', () => {
+        const scrubbed = scrubErrorForLogging(undefined)
+        expect(typeof scrubbed).toBe('string')
+      })
+
+      it('should handle string input', () => {
+        const scrubbed = scrubErrorForLogging('Simple error string')
+        expect(scrubbed).toContain('Simple error string')
+      })
+
+      it('should remove multiple sensitive fields', () => {
+        const error = {
+          message: 'Complex error',
+          prime: 'sensitive_prime',
+          amount: 5000,
+          card_number: '1234567890123456',
+        }
+        const scrubbed = scrubErrorForLogging(error)
+        expect(scrubbed).not.toContain('sensitive_prime')
+        expect(scrubbed).not.toContain('5000')
+        expect(scrubbed).not.toContain('1234567890123456')
+      })
+    })
+
+    describe('isRetryableError', () => {
+      it('should return true for 5xx errors', () => {
+        const error = { status: 500 }
+        expect(isRetryableError(error)).toBe(true)
+
+        const error502 = { status: 502 }
+        expect(isRetryableError(error502)).toBe(true)
+
+        const error503 = { statusCode: 503 }
+        expect(isRetryableError(error503)).toBe(true)
+      })
+
+      it('should return true for 429 Too Many Requests', () => {
+        const error = { status: 429 }
+        expect(isRetryableError(error)).toBe(true)
+
+        const error2 = { statusCode: 429 }
+        expect(isRetryableError(error2)).toBe(true)
+      })
+
+      it('should return false for 4xx errors except 429', () => {
+        const error400 = { status: 400 }
+        expect(isRetryableError(error400)).toBe(false)
+
+        const error401 = { statusCode: 401 }
+        expect(isRetryableError(error401)).toBe(false)
+
+        const error404 = { statusCode: 404 }
+        expect(isRetryableError(error404)).toBe(false)
+      })
+
+      it('should return true for timeout errors', () => {
+        const error = { message: 'Request timeout' }
+        expect(isRetryableError(error)).toBe(true)
+
+        const error2 = { message: 'TIMEOUT' }
+        expect(isRetryableError(error2)).toBe(true)
+      })
+
+      it('should return true for connection errors', () => {
+        const error = { message: 'ECONNREFUSED' }
+        expect(isRetryableError(error)).toBe(true)
+
+        const error2 = { message: 'ECONNRESET' }
+        expect(isRetryableError(error2)).toBe(true)
+
+        const error3 = { message: 'Connection error' }
+        expect(isRetryableError(error3)).toBe(true)
+      })
+
+      it('should return false for null', () => {
+        expect(isRetryableError(null)).toBe(false)
+      })
+
+      it('should return false for undefined', () => {
+        expect(isRetryableError(undefined)).toBe(false)
+      })
+
+      it('should handle Error objects with timeout message', () => {
+        const error = new Error('Connection timeout')
+        expect(isRetryableError(error)).toBe(true)
+      })
+    })
+  })
+
+  // ============================================================================
+  // Transaction Query Error Tests
+  // ============================================================================
+  describe('Transaction Query Methods - Error Cases', () => {
+    let client: TapPayClient
+
+    beforeEach(() => {
+      client = new TapPayClient({
+        partnerKey: 'test_key',
+        merchantId: 'test_merchant',
+        env: Env.Sandbox,
+      })
+    })
+
+    afterEach(() => {
+      mock.restore()
+    })
+
+    describe('getRecords error handling', () => {
+      it('should throw TapPayConfigError for invalid merchant ID during client creation', () => {
+        // Create a client with empty merchant ID to test validation
+        try {
+          new TapPayClient({
+            partnerKey: 'test_key',
+            merchantId: '',
+            env: Env.Sandbox,
+          })
+          expect.unreachable()
+        } catch (error) {
+          // Should throw config error for empty merchant ID
+          expect(error instanceof TapPayConfigError).toBe(true)
+        }
+      })
+
+      it('should throw TapPayError when API call fails', async () => {
+        try {
+          // This will test basic structure even if it fails with network error
+          await client.getRecords()
+        } catch (error) {
+          // Network error expected in test environment
+          // But we verify error type is TapPayError
+          expect(error instanceof TapPayError).toBe(true)
+        }
+      })
+    })
+
+    describe('getTransaction error handling', () => {
+      it('should throw TapPayValidationError for invalid trade ID', async () => {
+        try {
+          await client.getTransaction('')
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof TapPayValidationError).toBe(true)
+        }
+      })
+
+      it('should throw TapPayValidationError for undefined trade ID', async () => {
+        try {
+          await client.getTransaction(undefined as unknown as string)
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof TapPayValidationError).toBe(true)
+        }
+      })
+    })
+
+    describe('getTradeHistory error handling', () => {
+      it('should throw TapPayValidationError for empty trade ID', async () => {
+        try {
+          await client.getTradeHistory('')
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof TapPayValidationError).toBe(true)
+        }
+      })
+
+      it('should throw TapPayValidationError for whitespace-only trade ID', async () => {
+        try {
+          await client.getTradeHistory('   ')
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof TapPayValidationError).toBe(true)
+        }
+      })
+
+      it('should throw TapPayValidationError for undefined trade ID', async () => {
+        try {
+          await client.getTradeHistory(undefined as unknown as string)
+          expect.unreachable()
+        } catch (error) {
+          expect(error instanceof TapPayValidationError).toBe(true)
+        }
       })
     })
   })
