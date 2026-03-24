@@ -1,18 +1,11 @@
 import { Env } from './config/Env'
 import type { TapPayConfig } from './config/TapPayConfig'
-import { TapPayError } from './errors/TapPayError'
-import { TapPayTimeoutError } from './errors/TapPayTimeoutError'
 import type {
   BindCardRequest,
-  CapCancelRequest,
-  CapTodayRequest,
   PayByPrimeRequest,
   PayByTokenRequest,
   RecordRequest,
-  RefundCancelRequest,
   RefundRequest,
-  RemoveCardRequest,
-  TradeHistoryRequest,
 } from './payments/PaymentRequest'
 import type {
   BindCardResponse,
@@ -23,16 +16,12 @@ import type {
   RefundCancelResponse,
   RefundResponse,
   RemoveCardResponse,
-  TapPayBaseResponse,
   TradeHistoryResponse,
 } from './payments/PaymentResponse'
-import {
-  validateAmount,
-  validateConfig,
-  validateOptionalField,
-  validateRequired,
-  validateRequiredField,
-} from './utils/validators'
+import { CardService } from './services/CardService'
+import { PaymentService } from './services/PaymentService'
+import { TransactionService } from './services/TransactionService'
+import { validateConfig } from './utils/validators'
 
 /**
  * Default timeout in milliseconds
@@ -66,6 +55,9 @@ const DEFAULT_TIMEOUT = 30000
  */
 export class TapPayClient {
   private readonly config: Required<TapPayConfig>
+  private readonly paymentService: PaymentService
+  private readonly transactionService: TransactionService
+  private readonly cardService: CardService
 
   /**
    * 建立 TapPay 客戶端實例
@@ -92,6 +84,11 @@ export class TapPayClient {
       env: config.env ?? Env.Sandbox,
       timeout: config.timeout ?? DEFAULT_TIMEOUT,
     }
+
+    // Initialize service instances
+    this.paymentService = new PaymentService(this.config)
+    this.transactionService = new TransactionService(this.config)
+    this.cardService = new CardService(this.config)
   }
 
   /**
@@ -106,115 +103,6 @@ export class TapPayClient {
   private validateConfig(config: TapPayConfig): void {
     // 使用驗證模組中的 validateConfig 函數
     validateConfig(config)
-  }
-
-  /**
-   * 發送 HTTP 請求到 TapPay API
-   *
-   * 處理所有與 TapPay API 的通訊，包括錯誤處理、超時控制和回應解析。
-   *
-   * @param endpoint - API 端點路徑（例如：'/tpc/payment/pay-by-prime'）
-   * @param body - 請求主體物件
-   * @returns Promise 解析為 TapPay API 回應
-   * @throws {TapPayError} 當 API 回應狀態碼不為 0 時
-   * @throws {TapPayTimeoutError} 當請求超時時
-   * @throws {TapPayError} 當網路錯誤或回應解析失敗時
-   * @private
-   */
-  private async sendRequest<T extends TapPayBaseResponse>(
-    endpoint: string,
-    body: Record<string, unknown>
-  ): Promise<T> {
-    const url = `${this.config.env}${endpoint}`
-
-    const controller = new AbortController()
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-    try {
-      timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': this.config.partnerKey,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-
-      // Handle HTTP errors with better error message extraction
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-        try {
-          const errorText = await response.text()
-          if (errorText) {
-            try {
-              const errorData = JSON.parse(errorText) as { msg?: string; message?: string }
-              if (errorData.msg) {
-                errorMessage = errorData.msg
-              } else if (errorData.message) {
-                errorMessage = errorData.message
-              }
-            } catch {
-              // If JSON parsing fails, use the raw text if it's not too long
-              if (errorText.length < 500) {
-                errorMessage = errorText
-              }
-            }
-          }
-        } catch {
-          // Ignore errors when reading response, use default message
-        }
-        throw new TapPayError(errorMessage, response.status)
-      }
-
-      // Parse JSON response with error handling
-      let data: T
-      try {
-        const text = await response.text()
-        if (!text) {
-          throw new TapPayError('Empty response from server', response.status)
-        }
-        data = JSON.parse(text) as T
-      } catch (parseError) {
-        throw new TapPayError(
-          `Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`,
-          response.status
-        )
-      }
-
-      // Check TapPay status code
-      if (data.status !== 0) {
-        throw TapPayError.fromResponse(data as TapPayBaseResponse & { rec_trade_id?: string })
-      }
-
-      return data
-    } catch (error) {
-      // Re-throw TapPay errors as-is
-      if (error instanceof TapPayError) {
-        throw error
-      }
-
-      // Handle timeout errors
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new TapPayTimeoutError(
-          `Request timeout after ${this.config.timeout}ms`,
-          this.config.timeout,
-          endpoint
-        )
-      }
-
-      // Handle other errors with more detailed messages
-      const errorMessage =
-        error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown error occurred'
-      throw new TapPayError(`Network error: ${errorMessage}`, -1)
-    } finally {
-      // Ensure timeout is always cleared
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
   }
 
   // ============================================================================
@@ -252,21 +140,7 @@ export class TapPayClient {
   async payByPrime(
     options: Omit<PayByPrimeRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
-    // Validate required fields
-    validateRequired(options.prime, 'prime')
-    validateAmount(options.amount, 'amount')
-    validateOptionalField(options.order_number, 'order_number')
-
-    const body: PayByPrimeRequest = {
-      ...options,
-      partner_key: this.config.partnerKey,
-      merchant_id: this.config.merchantId,
-    }
-
-    return this.sendRequest<PaymentResponse>(
-      '/tpc/payment/pay-by-prime',
-      body as unknown as Record<string, unknown>
-    )
+    return this.paymentService.payByPrime(options)
   }
 
   /**
@@ -295,23 +169,7 @@ export class TapPayClient {
   async payByToken(
     options: Omit<PayByTokenRequest, 'partner_key' | 'merchant_id'>
   ): Promise<PaymentResponse> {
-    // Validate required fields
-    validateRequired(options.card_key, 'card_key')
-    validateRequired(options.card_token, 'card_token')
-    validateAmount(options.amount, 'amount')
-    validateRequiredField(options.currency, 'currency')
-    validateOptionalField(options.order_number, 'order_number')
-
-    const body: PayByTokenRequest = {
-      ...options,
-      partner_key: this.config.partnerKey,
-      merchant_id: this.config.merchantId,
-    }
-
-    return this.sendRequest<PaymentResponse>(
-      '/tpc/payment/pay-by-token',
-      body as unknown as Record<string, unknown>
-    )
+    return this.paymentService.payByToken(options)
   }
 
   // ============================================================================
@@ -344,24 +202,7 @@ export class TapPayClient {
     recTradeId: string,
     options?: Omit<RefundRequest, 'partner_key' | 'rec_trade_id'>
   ): Promise<RefundResponse> {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-
-    // Validate amount if provided (must be positive)
-    if (options?.amount !== undefined) {
-      validateAmount(options.amount, 'amount')
-    }
-
-    const body: RefundRequest = {
-      ...options,
-      partner_key: this.config.partnerKey,
-      rec_trade_id: recTradeId,
-    }
-
-    return this.sendRequest<RefundResponse>(
-      '/tpc/transaction/refund',
-      body as unknown as Record<string, unknown>
-    )
+    return this.transactionService.refund(recTradeId, options)
   }
 
   /**
@@ -383,20 +224,7 @@ export class TapPayClient {
    * ```
    */
   async cancelRefund(recTradeId: string, refundId: string): Promise<RefundCancelResponse> {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-    validateRequired(refundId, 'refundId')
-
-    const body: RefundCancelRequest = {
-      partner_key: this.config.partnerKey,
-      rec_trade_id: recTradeId,
-      refund_id: refundId,
-    }
-
-    return this.sendRequest<RefundCancelResponse>(
-      '/tpc/transaction/refund/cancel',
-      body as unknown as Record<string, unknown>
-    )
+    return this.transactionService.cancelRefund(recTradeId, refundId)
   }
 
   /**
@@ -417,18 +245,7 @@ export class TapPayClient {
    * ```
    */
   async capToday(recTradeId: string): Promise<CapTodayResponse> {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-
-    const body: CapTodayRequest = {
-      partner_key: this.config.partnerKey,
-      rec_trade_id: recTradeId,
-    }
-
-    return this.sendRequest<CapTodayResponse>(
-      '/tpc/transaction/cap',
-      body as unknown as Record<string, unknown>
-    )
+    return this.transactionService.capToday(recTradeId)
   }
 
   /**
@@ -448,18 +265,7 @@ export class TapPayClient {
    * ```
    */
   async cancelCapture(recTradeId: string): Promise<CapCancelResponse> {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-
-    const body: CapCancelRequest = {
-      partner_key: this.config.partnerKey,
-      rec_trade_id: recTradeId,
-    }
-
-    return this.sendRequest<CapCancelResponse>(
-      '/tpc/transaction/cap/cancel',
-      body as unknown as Record<string, unknown>
-    )
+    return this.transactionService.cancelCapture(recTradeId)
   }
 
   // ============================================================================
@@ -499,20 +305,7 @@ export class TapPayClient {
   async bindCard(
     options: Omit<BindCardRequest, 'partner_key' | 'merchant_id'>
   ): Promise<BindCardResponse> {
-    // Validate required fields
-    validateRequired(options.prime, 'prime')
-    validateRequiredField(options.currency, 'currency')
-
-    const body: BindCardRequest = {
-      ...options,
-      partner_key: this.config.partnerKey,
-      merchant_id: this.config.merchantId,
-    }
-
-    return this.sendRequest<BindCardResponse>(
-      '/tpc/card/bind',
-      body as unknown as Record<string, unknown>
-    )
+    return this.cardService.bindCard(options)
   }
 
   /**
@@ -533,20 +326,7 @@ export class TapPayClient {
    * ```
    */
   async removeCard(cardKey: string, cardToken: string): Promise<RemoveCardResponse> {
-    // Validate required fields
-    validateRequired(cardKey, 'cardKey')
-    validateRequired(cardToken, 'cardToken')
-
-    const body: RemoveCardRequest = {
-      partner_key: this.config.partnerKey,
-      card_key: cardKey,
-      card_token: cardToken,
-    }
-
-    return this.sendRequest<RemoveCardResponse>(
-      '/tpc/card/remove',
-      body as unknown as Record<string, unknown>
-    )
+    return this.cardService.removeCard(cardKey, cardToken)
   }
 
   // ============================================================================
@@ -576,15 +356,7 @@ export class TapPayClient {
    * ```
    */
   async getRecords(options?: Omit<RecordRequest, 'partner_key'>): Promise<RecordResponse> {
-    const body: RecordRequest = {
-      ...options,
-      partner_key: this.config.partnerKey,
-    }
-
-    return this.sendRequest<RecordResponse>(
-      '/tpc/transaction/query',
-      body as unknown as Record<string, unknown>
-    )
+    return this.transactionService.getRecords(options)
   }
 
   /**
@@ -607,16 +379,7 @@ export class TapPayClient {
    * ```
    */
   async getTransaction(recTradeId: string) {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-
-    const response = await this.getRecords({
-      filters: {
-        rec_trade_id: recTradeId,
-      },
-    })
-
-    return response.trade_records?.[0] ?? null
+    return this.transactionService.getTransaction(recTradeId)
   }
 
   /**
@@ -639,18 +402,7 @@ export class TapPayClient {
    * ```
    */
   async getTradeHistory(recTradeId: string): Promise<TradeHistoryResponse> {
-    // Validate required fields
-    validateRequired(recTradeId, 'recTradeId')
-
-    const body: TradeHistoryRequest = {
-      partner_key: this.config.partnerKey,
-      rec_trade_id: recTradeId,
-    }
-
-    return this.sendRequest<TradeHistoryResponse>(
-      '/tpc/transaction/trade-history',
-      body as unknown as Record<string, unknown>
-    )
+    return this.cardService.getTradeHistory(recTradeId)
   }
 
   // ============================================================================

@@ -107,6 +107,14 @@ export type {
 } from './payments/PaymentResponse'
 
 // ============================================================================
+// Service classes (new in v1.8.0)
+// ============================================================================
+export { BaseService } from './services/BaseService'
+export { CardService } from './services/CardService'
+export { PaymentService } from './services/PaymentService'
+export { TransactionService } from './services/TransactionService'
+
+// ============================================================================
 // Core Client
 // ============================================================================
 export { TapPayClient } from './TapPayClient'
