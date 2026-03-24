@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0](https://github.com/CarlLee1983/tappay-backend-payment-node/compare/v1.7.0...v1.8.0) (2026-03-24)
+
+
+### Features
+
+* [1.3] 拆分 TapPayClient 為 3 個單一職責 Service 類別 ([ef48e9e](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/ef48e9ec8fcf4320f43a44e78a6c448b6a36ea7c))
+* [1.4] 新增 webhook、retry、errorHandling 工具函數 ([aea0e48](https://github.com/CarlLee1983/tappay-backend-payment-node/commit/aea0e4826b4794c6949a136cbadd4c11f9f07b26))
+
 ## [1.7.0](https://github.com/CarlLee1983/tappay-backend-payment-node/compare/v1.6.0...v1.7.0) (2025-12-14)
 
 
